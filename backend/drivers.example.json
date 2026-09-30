@@ -1,0 +1,9 @@
+{
+  "_help": "Copy to drivers.local.json (gitignored) and fill in REAL emails. Omit 'password' to have one generated into credentials.local.json. Set active:false to disable an account (it is never deleted). The admin email must differ from your own driver email.",
+  "admin": { "name": "Owner (Admin)", "email": "owner.admin@example.com" },
+  "drivers": [
+    { "name": "Owner", "email": "owner.driver@example.com" },
+    { "name": "Driver Two", "email": "driver2@example.com", "password": "at-least-8-chars" },
+    { "name": "Former Driver", "email": "former@example.com", "active": false }
+  ]
+}

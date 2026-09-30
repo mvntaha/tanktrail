@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "tanktrail-dev-e514e",
+    "dev": "tanktrail-dev-e514e",
+    "prod": "tanktrail-3cbba"
+  }
+}

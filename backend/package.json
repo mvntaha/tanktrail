@@ -1,0 +1,20 @@
+{
+  "name": "tanktrail-backend",
+  "private": true,
+  "type": "module",
+  "description": "TankTrail Firestore rules, rules tests and account seed script",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "mocha --timeout 20000 tests/",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tanktrail \"npm test\"",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "firebase-admin": "14.5.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "mocha": "12.0.2"
+  }
+}

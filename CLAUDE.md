@@ -320,6 +320,10 @@ downloads). Backend (Node): firebase-admin, @firebase/rules-unit-testing. Worker
 
 &#x20; and shadows come from tokens; never hard-code colors in widgets. A future theme change = replace that one file.
 
+\- Full token source of truth: `docs/design-tokens.css` (owner's CSS, incl. card/popover-foreground, sidebar-\*,
+
+&#x20; the full shadow scale and --spacing). The summary below is a subset.
+
 \- Light: background #f4f5f7, foreground #0c121a, card #ffffff, popover #ffffff, primary #297cef, primary-foreground
 
 &#x20; #ffffff, secondary #e9ebee, secondary-foreground #222933, muted #eceff1, muted-foreground #565e69, accent #d9e6f9,

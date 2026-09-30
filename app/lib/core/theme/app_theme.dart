@@ -16,7 +16,7 @@ ThemeData buildAppTheme(AppTokens t) {
     error: t.destructive,
     onError: t.destructiveForeground,
     surface: t.card,
-    onSurface: t.foreground,
+    onSurface: t.cardForeground,
     onSurfaceVariant: t.mutedForeground,
     surfaceContainerHighest: t.muted,
     outline: t.border,
@@ -92,6 +92,18 @@ ThemeData buildAppTheme(AppTokens t) {
         borderRadius: BorderRadius.circular(t.radius),
         side: BorderSide(color: t.border),
       ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: t.popover,
+      surfaceTintColor: t.popover,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusXl)),
+      titleTextStyle: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: t.popoverForeground,
+      ),
+      contentTextStyle: TextStyle(fontFamily: 'Inter', fontSize: 16, color: t.popoverForeground),
     ),
     dividerTheme: DividerThemeData(color: t.border, thickness: 1),
     snackBarTheme: SnackBarThemeData(

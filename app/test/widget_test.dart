@@ -43,6 +43,26 @@ void main() {
     });
   });
 
+  group('tokens match docs/design-tokens.css', () {
+    final t = AppTokens.light;
+    test('--shadow has both layers: 0 2px 28px + 0 1px 2px -1px, #4e5661 at 10%', () {
+      expect(t.shadow, hasLength(2));
+      expect(t.shadow[0].offset, const Offset(0, 2));
+      expect(t.shadow[1].offset, const Offset(0, 1));
+      expect(t.shadow[1].spreadRadius, -1);
+      expect(t.shadow[0].color, const Color(0xFF4E5661).withValues(alpha: 0.10));
+      expect(t.shadow2xs.single.color, const Color(0xFF4E5661).withValues(alpha: 0.05));
+      expect(t.shadow2xl.single.color, const Color(0xFF4E5661).withValues(alpha: 0.25));
+    });
+    test('radius scale and key colors', () {
+      expect([t.radiusSm, t.radiusMd, t.radiusLg, t.radiusXl], [20, 22, 24, 28]);
+      expect(t.primary, const Color(0xFF297CEF));
+      expect(t.sidebar, const Color(0xFFECEFF1));
+      expect(AppTokens.dark.sidebarBorder, const Color(0xFF212429));
+      expect(AppTokens.dark.destructiveForeground, const Color(0xFFFFFFFF));
+    });
+  });
+
   testWidgets('login screen shows email, password and sign-in button', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

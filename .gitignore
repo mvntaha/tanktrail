@@ -1,0 +1,55 @@
+# ---- Secrets: NEVER commit these ----
+# Firebase service-account keys (keep them outside the repo, e.g. C:\secrets\)
+*service-account*.json
+*serviceAccount*.json
+*-sa.json
+*firebase-adminsdk*.json
+# Driver list and generated credentials (seed script)
+backend/drivers.local.json
+backend/credentials*.json
+backend/credentials*.txt
+*.credentials.*
+# Environment files and Worker secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+worker/.dev.vars
+# Android release signing
+*.jks
+*.keystore
+app/android/key.properties
+**/android/key.properties
+
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build outputs / tool caches ----
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+worker/.wrangler/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# ---- Editor / OS ----
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

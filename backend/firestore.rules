@@ -1,0 +1,263 @@
+rules_version = '2';
+
+// TankTrail Firestore rules v1.
+// Principles (see CLAUDE.md):
+// - Every signed-in user needs a role claim ('driver' or 'admin'); anyone else gets nothing.
+// - Nothing is ever deleted (no delete rules = always denied).
+// - Rules check shape and ownership only, never odometer order or plausibility:
+//   offline writes must never be rejected and lose evidence. Anomalies are admin-side flags.
+// - All coordinates live in <log>/private/geo, readable by the admin only.
+// - A driver edit must write its history entry (<log>/edits/{editId}) in the same batch.
+//   The log stores lastEditId so the rules can find that entry with existsAfter().
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function role() {
+      return request.auth == null ? null : request.auth.token.get('role', null);
+    }
+    function isDriver() { return role() == 'driver'; }
+    function isAdmin() { return role() == 'admin'; }
+    function hasRole() { return isDriver() || isAdmin(); }
+    function uid() { return request.auth.uid; }
+
+    // The caller's own users/{uid} doc (written by the seed script).
+    function me() { return get(/databases/$(database)/documents/users/$(uid())).data; }
+    function isActiveDriver() { return isDriver() && me().active == true; }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function changed() { return incoming().diff(existing()).affectedKeys(); }
+    function exactKeys(d, keys) { return d.keys().hasAll(keys) && d.keys().hasOnly(keys); }
+
+    function isLoc(m) {
+      return m is map && exactKeys(m, ['lat', 'lng', 'acc', 'mock'])
+        && m.lat is number && m.lng is number && m.acc is number && m.mock is bool;
+    }
+    function optNumber(d, k) { return !(k in d) || d[k] == null || d[k] is number; }
+    function fuelTypes() { return ['petrol', 'diesel', 'cng', 'other']; }
+
+    // A driver edit bumps lastEditId and must create that history entry in the same batch.
+    function editStampOk(coll, logId) {
+      return incoming().edited == true
+        && incoming().editedAt == request.time
+        && incoming().lastEditId is string
+        && incoming().lastEditId != existing().get('lastEditId', '')
+        && existsAfter(/databases/$(database)/documents/$(coll)/$(logId)/edits/$(incoming().lastEditId));
+    }
+    // History entry: previous values must equal the log's values BEFORE this batch.
+    function historyOk(coll, logId, editId, previous) {
+      return isDriver()
+        && get(/databases/$(database)/documents/$(coll)/$(logId)).data.driverId == uid()
+        && getAfter(/databases/$(database)/documents/$(coll)/$(logId)).data.lastEditId == editId
+        && exactKeys(incoming(), ['previous', 'editedAt', 'editedBy'])
+        && incoming().editedBy == uid()
+        && incoming().editedAt == request.time
+        && incoming().previous == previous;
+    }
+
+    // ---------- users ----------
+    // Created and managed by seed.js (Admin SDK bypasses rules).
+    // The only self-write: the one-time location-disclosure acceptance.
+    match /users/{userId} {
+      allow read: if isAdmin() || (hasRole() && userId == uid());
+      allow update: if hasRole() && userId == uid()
+        && !('locationNoticeAcceptedAt' in existing())
+        && changed().hasOnly(['locationNoticeAcceptedAt'])
+        && incoming().locationNoticeAcceptedAt == request.time;
+    }
+
+    // ---------- vehicle ----------
+    match /vehicle/{docId} {
+      allow read: if hasRole();
+      allow create, update: if isAdmin() && docId == 'main'
+        && incoming().keys().hasAll(['name', 'plate', 'fuelType'])
+        && incoming().keys().hasOnly(['name', 'plate', 'fuelType',
+             'tankCapacityL', 'baselineKmPerL', 'referencePricePerL'])
+        && incoming().name is string && incoming().plate is string
+        && incoming().fuelType in fuelTypes()
+        && optNumber(incoming(), 'tankCapacityL')
+        && optNumber(incoming(), 'baselineKmPerL')
+        && optNumber(incoming(), 'referencePricePerL');
+    }
+
+    // ---------- places (admin only: names reveal locations) ----------
+    match /places/{placeId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && exactKeys(incoming(), ['name', 'lat', 'lng', 'radiusM'])
+        && incoming().name is string && incoming().name.size() > 0
+        && incoming().lat is number && incoming().lng is number
+        && incoming().radiusM is number && incoming().radiusM > 0;
+    }
+
+    // ---------- trips ----------
+    match /trips/{tripId} {
+      function geoPath() { return /databases/$(database)/documents/trips/$(tripId)/private/geo; }
+
+      allow read: if hasRole();
+
+      // Start: written together with private/geo in one batch.
+      allow create: if isActiveDriver()
+        && exactKeys(incoming(), ['driverId', 'driverName', 'startOdo', 'startedAt',
+             'startEvidence', 'createdAt', 'status', 'edited'])
+        && incoming().driverId == uid()
+        && incoming().driverName == me().name
+        && incoming().startOdo is number
+        && incoming().startedAt is timestamp
+        && incoming().startEvidence is list
+        && incoming().startEvidence.size() >= 1 && incoming().startEvidence.size() <= 3
+        && incoming().createdAt == request.time
+        && incoming().status == 'open'
+        && incoming().edited == false
+        && existsAfter(geoPath());
+
+      allow update: if isCloseOk() || isDriverEditOk() || isAdminReviewOk();
+
+      // End: status open -> closed, together with endLoc in private/geo.
+      function isCloseOk() {
+        return isDriver() && existing().driverId == uid()
+          && existing().status == 'open'
+          && changed().hasOnly(['status', 'endOdo', 'endedAt', 'endEvidence', 'closedAt'])
+          && incoming().status == 'closed'
+          && incoming().endOdo is number
+          && incoming().endedAt is timestamp
+          && incoming().endEvidence is list
+          && incoming().endEvidence.size() >= 1 && incoming().endEvidence.size() <= 3
+          && incoming().closedAt == request.time
+          && 'endLoc' in getAfter(geoPath()).data;
+      }
+
+      // Typed readings only, while not reviewed. endOdo exists only once closed.
+      function isDriverEditOk() {
+        return isDriver() && existing().driverId == uid()
+          && existing().get('reviewed', false) == false
+          && changed().hasOnly(['startOdo', 'endOdo', 'edited', 'editedAt', 'lastEditId'])
+          && changed().hasAny(['startOdo', 'endOdo'])
+          && incoming().startOdo is number
+          && (existing().status == 'closed'
+                ? incoming().endOdo is number
+                : !('endOdo' in incoming()))
+          && editStampOk('trips', tripId);
+      }
+
+      // Review / un-review (reopen) and notes. Changing 'reviewed' stamps reviewedAt.
+      function isAdminReviewOk() {
+        return isAdmin()
+          && changed().hasOnly(['reviewed', 'adminNote', 'reviewedAt'])
+          && incoming().get('reviewed', false) is bool
+          && (!('adminNote' in incoming()) || incoming().adminNote is string)
+          && (!changed().hasAny(['reviewed']) || incoming().reviewedAt == request.time);
+      }
+
+      match /private/{docId} {
+        function trip() { return get(/databases/$(database)/documents/trips/$(tripId)); }
+        function tripAfter() { return getAfter(/databases/$(database)/documents/trips/$(tripId)); }
+
+        allow read: if isAdmin();
+        // Only in the same batch that creates the trip.
+        allow create: if docId == 'geo' && isDriver()
+          && !exists(/databases/$(database)/documents/trips/$(tripId))
+          && tripAfter().data.driverId == uid()
+          && exactKeys(incoming(), ['startLoc', 'startEvidenceLocs'])
+          && isLoc(incoming().startLoc)
+          && incoming().startEvidenceLocs is list;
+        // Only in the same batch that closes the trip.
+        allow update: if docId == 'geo' && isDriver()
+          && trip().data.driverId == uid()
+          && trip().data.status == 'open'
+          && tripAfter().data.status == 'closed'
+          && changed().hasOnly(['endLoc', 'endEvidenceLocs'])
+          && isLoc(incoming().endLoc)
+          && incoming().endEvidenceLocs is list;
+      }
+
+      match /edits/{editId} {
+        function tripBefore() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        allow read: if isAdmin();
+        allow create: if historyOk('trips', tripId, editId, {
+          'startOdo': tripBefore().startOdo,
+          'endOdo': tripBefore().get('endOdo', null)
+        });
+      }
+    }
+
+    // ---------- fuelLogs ----------
+    match /fuelLogs/{logId} {
+      function fillFieldsOk(d) {
+        return d.odometer is number && d.liters is number
+          && d.pricePerL is number && d.total is number
+          && d.fuelType in fuelTypes()
+          && d.paidBy in ['company_cash', 'own'];
+      }
+
+      allow read: if hasRole();
+
+      // Written only after all media uploaded, together with private/geo in one batch.
+      allow create: if isActiveDriver()
+        && exactKeys(incoming(), ['driverId', 'driverName', 'odometer', 'liters', 'pricePerL',
+             'total', 'fuelType', 'paidBy', 'evidence', 'capturedAtDevice', 'createdAt',
+             'status', 'edited'])
+        && incoming().driverId == uid()
+        && incoming().driverName == me().name
+        && fillFieldsOk(incoming())
+        && incoming().evidence is list
+        && incoming().evidence.size() >= 3 && incoming().evidence.size() <= 6
+        && incoming().capturedAtDevice is timestamp
+        && incoming().createdAt == request.time
+        && incoming().status == 'pending'
+        && incoming().edited == false
+        && existsAfter(/databases/$(database)/documents/fuelLogs/$(logId)/private/geo);
+
+      allow update: if isDriverEditOk() || isAdminReviewOk();
+
+      // Typed fields only, while pending.
+      function isDriverEditOk() {
+        return isDriver() && existing().driverId == uid()
+          && existing().status == 'pending'
+          && changed().hasOnly(['odometer', 'liters', 'pricePerL', 'total', 'fuelType',
+               'paidBy', 'edited', 'editedAt', 'lastEditId'])
+          && changed().hasAny(['odometer', 'liters', 'pricePerL', 'total', 'fuelType', 'paidBy'])
+          && fillFieldsOk(incoming())
+          && editStampOk('fuelLogs', logId);
+      }
+
+      // Approve / reject (needs a reason) / reopen (back to pending), flags reviewed.
+      function isAdminReviewOk() {
+        return isAdmin()
+          && changed().hasOnly(['status', 'reviewNote', 'reviewedAt', 'flagsReviewed'])
+          && incoming().status in ['pending', 'approved', 'rejected']
+          && (incoming().status != 'rejected'
+                || (incoming().get('reviewNote', null) is string
+                    && incoming().reviewNote.size() > 0))
+          && (!('reviewNote' in incoming()) || incoming().reviewNote is string)
+          && (!changed().hasAny(['status']) || incoming().reviewedAt == request.time)
+          && (!('flagsReviewed' in incoming()) || incoming().flagsReviewed is bool);
+      }
+
+      match /private/{docId} {
+        allow read: if isAdmin();
+        // Only in the same batch that creates the log. Never updated.
+        allow create: if docId == 'geo' && isDriver()
+          && !exists(/databases/$(database)/documents/fuelLogs/$(logId))
+          && getAfter(/databases/$(database)/documents/fuelLogs/$(logId)).data.driverId == uid()
+          && exactKeys(incoming(), ['loc', 'evidenceLocs'])
+          && isLoc(incoming().loc)
+          && incoming().evidenceLocs is list;
+      }
+
+      match /edits/{editId} {
+        function logBefore() { return get(/databases/$(database)/documents/fuelLogs/$(logId)).data; }
+        allow read: if isAdmin();
+        allow create: if historyOk('fuelLogs', logId, editId, {
+          'odometer': logBefore().odometer,
+          'liters': logBefore().liters,
+          'pricePerL': logBefore().pricePerL,
+          'total': logBefore().total,
+          'fuelType': logBefore().fuelType,
+          'paidBy': logBefore().paidBy
+        });
+      }
+    }
+  }
+}

@@ -1,30 +1,60 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tanktrail/core/router/app_router.dart';
+import 'package:tanktrail/core/theme/app_theme.dart';
+import 'package:tanktrail/core/theme/app_tokens.dart';
+import 'package:tanktrail/features/auth/domain/app_user.dart';
+import 'package:tanktrail/features/auth/domain/session.dart';
+import 'package:tanktrail/features/auth/presentation/login_screen.dart';
 
-import 'package:tanktrail/main.dart';
+AppUser _user({String role = 'driver', bool notice = false}) => AppUser.fromMap('u1', {
+      'name': 'Ali',
+      'email': 'ali@example.com',
+      'role': role,
+      'active': true,
+      if (notice) 'locationNoticeAcceptedAt': null, // pending server timestamp
+    });
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('AppUser.fromMap', () {
+    test('parses role and notice key', () {
+      final u = _user(notice: true);
+      expect(u.role, UserRole.driver);
+      expect(u.locationNoticeAccepted, isTrue);
+    });
+    test('unknown role becomes null', () {
+      expect(_user(role: 'boss').role, isNull);
+    });
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  group('homeFor routes each session to one screen', () {
+    test('loading / signed out / blocked', () {
+      expect(homeFor(const SessionLoading()), Routes.splash);
+      expect(homeFor(const SignedOut()), Routes.login);
+      expect(homeFor(const SessionBlocked('x')), Routes.blocked);
+    });
+    test('driver sees the notice until accepted, then driver home', () {
+      expect(homeFor(SignedIn(_user())), Routes.notice);
+      expect(homeFor(SignedIn(_user(notice: true))), Routes.driver);
+    });
+    test('admin goes straight to admin home (no notice)', () {
+      expect(homeFor(SignedIn(_user(role: 'admin'))), Routes.admin);
+    });
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('login screen shows email, password and sign-in button', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: buildAppTheme(AppTokens.light), home: const LoginScreen()),
+      ),
+    );
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
+
+    await tester.tap(find.text('Sign in'));
     await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Enter your email'), findsOneWidget);
   });
 }

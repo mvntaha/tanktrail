@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "80566793165",
+    "project_id": "tanktrail-dev-e514e",
+    "storage_bucket": "tanktrail-dev-e514e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:80566793165:android:b7db332974a8283cca0a84",
+        "android_client_info": {
+          "package_name": "com.tanktrail.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSg6ft8uVcvM2p4ZshQT_VBOml391oikM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

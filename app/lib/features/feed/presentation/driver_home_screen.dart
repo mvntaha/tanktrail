@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/db/app_database.dart' show SyncState;
 import '../../../core/router/app_router.dart';
+import '../../../core/sync/sync_status.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/format.dart';
 import '../../auth/data/auth_repository.dart';
@@ -43,6 +45,7 @@ class DriverHomeScreen extends ConsumerWidget {
         children: [
           Text('Hi $name', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: t.foreground)),
           const SizedBox(height: 20),
+          if (openTrip.value == null) const _OthersOpenTrips(),
           switch (openTrip) {
             AsyncData(value: final trip?) => _OpenTripCard(trip: trip),
             AsyncData() => FilledButton.icon(
@@ -168,7 +171,7 @@ class _TripTile extends StatelessWidget {
             children: [
               Text(formatWhen(trip.startedAt), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
               const SizedBox(height: 4),
-              const _OnPhoneBadge(),
+              _SyncBadge(logId: trip.id),
             ],
           ),
         ],
@@ -215,7 +218,7 @@ class _FillTile extends StatelessWidget {
             children: [
               Text(formatWhen(fill.capturedAtDevice), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
               const SizedBox(height: 4),
-              const _OnPhoneBadge(),
+              _SyncBadge(logId: fill.id),
             ],
           ),
         ],
@@ -224,17 +227,63 @@ class _FillTile extends StatelessWidget {
   }
 }
 
-/// Nothing uploads yet (M5); be honest about where the data is.
-class _OnPhoneBadge extends StatelessWidget {
-  const _OnPhoneBadge();
+/// Where this log is: waiting, uploading n/m, sending, sent, or not accepted.
+class _SyncBadge extends ConsumerWidget {
+  const _SyncBadge({required this.logId});
+
+  final String logId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
+    final sync = ref.watch(logSyncProvider).value?[logId];
+    final label = sync?.label ?? 'On phone';
+    final (bg, fg) = switch (sync?.state) {
+      SyncState.synced => (t.accent, t.accentForeground),
+      SyncState.rejected => (t.destructive, t.destructiveForeground),
+      _ => (t.muted, t.mutedForeground),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: t.muted, borderRadius: BorderRadius.circular(t.radiusSm)),
-      child: Text('On phone', style: TextStyle(fontSize: 12, color: t.mutedForeground)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(t.radiusSm)),
+      child: Text(label, style: TextStyle(fontSize: 12, color: fg, fontWeight: FontWeight.w500)),
+    );
+  }
+}
+
+/// Warns (never blocks) when someone else has a trip open.
+class _OthersOpenTrips extends ConsumerWidget {
+  const _OthersOpenTrips();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final others = ref.watch(othersOpenTripsProvider).value ?? const [];
+    if (others.isEmpty) return const SizedBox.shrink();
+    final who = others
+        .map((o) => o.startedAt == null ? o.driverName : '${o.driverName} (since ${formatWhen(o.startedAt!)})')
+        .join(', ');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.secondary,
+        borderRadius: BorderRadius.circular(t.radiusSm),
+        border: Border.all(color: t.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: t.secondaryForeground),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Open trip: $who. If you have the car now, you can still start yours.',
+              style: TextStyle(fontSize: 14, height: 1.35, color: t.secondaryForeground),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

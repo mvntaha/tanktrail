@@ -121,6 +121,50 @@ void main() {
     expect(ev.ocrText, isNull); // new column, empty for old rows
     expect(await db.select(db.localFuelLogs).get(), isEmpty); // new table exists
     expect(await db.watchLastOdometer().first, 150);
-    expect(await db.customSelect('PRAGMA user_version').map((r) => r.read<int>('user_version')).getSingle(), 2);
+    expect(await db.customSelect('PRAGMA user_version').map((r) => r.read<int>('user_version')).getSingle(), 3);
+    // v3 columns exist with safe defaults for old rows.
+    expect(trips.single.startSync, SyncState.local);
+    expect(ev.uploadState, UploadState.pending);
+  });
+
+  test('upgrading a v2 phone database (the owner phone after M4) keeps trips and fills', () async {
+    final db = AppDatabase(NativeDatabase.memory(setup: (raw) {
+      raw.execute('''
+        CREATE TABLE local_trips (id TEXT NOT NULL PRIMARY KEY, driver_id TEXT NOT NULL,
+          driver_name TEXT NOT NULL, status TEXT NOT NULL, start_odo INTEGER NOT NULL,
+          started_at INTEGER NOT NULL, start_lat REAL NOT NULL, start_lng REAL NOT NULL,
+          start_acc REAL NOT NULL, start_mock INTEGER NOT NULL, end_odo INTEGER NULL,
+          ended_at INTEGER NULL, end_lat REAL NULL, end_lng REAL NULL, end_acc REAL NULL,
+          end_mock INTEGER NULL);''');
+      raw.execute('''
+        CREATE TABLE local_evidence (id TEXT NOT NULL PRIMARY KEY, log_id TEXT NOT NULL,
+          log_kind TEXT NOT NULL, phase TEXT NOT NULL, type TEXT NOT NULL, file_path TEXT NOT NULL,
+          sha256 TEXT NOT NULL, captured_at_device INTEGER NOT NULL, lat REAL NOT NULL,
+          lng REAL NOT NULL, acc REAL NOT NULL, mock INTEGER NOT NULL, duration_sec INTEGER NULL,
+          ocr_text TEXT NULL);''');
+      raw.execute('''
+        CREATE TABLE local_fuel_logs (id TEXT NOT NULL PRIMARY KEY, driver_id TEXT NOT NULL,
+          driver_name TEXT NOT NULL, odometer INTEGER NOT NULL, liters REAL NOT NULL,
+          price_per_l REAL NOT NULL, total REAL NOT NULL, fuel_type TEXT NOT NULL, paid_by TEXT NOT NULL,
+          captured_at_device INTEGER NOT NULL, lat REAL NOT NULL, lng REAL NOT NULL, acc REAL NOT NULL,
+          mock INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending');''');
+      raw.execute("INSERT INTO local_trips VALUES ('t1','ali','Ali','open',100,1759300000,1,2,5,0,"
+          'NULL,NULL,NULL,NULL,NULL,NULL)');
+      raw.execute("INSERT INTO local_fuel_logs VALUES ('f1','ali','Ali',120,15,326.8,4902,'petrol','own',"
+          "1759300000,1,2,5,0,'pending')");
+      raw.execute("INSERT INTO local_evidence VALUES ('v1','f1','fuel','fill','video','/x','h',"
+          "1759300000,1,2,5,0,40,NULL)");
+      raw.execute('PRAGMA user_version = 2');
+    }));
+    addTearDown(db.close);
+
+    expect((await db.select(db.localTrips).getSingle()).startSync, SyncState.local);
+    final fill = await db.select(db.localFuelLogs).getSingle();
+    expect(fill.total, 4902);
+    expect(fill.sync, SyncState.local);
+    final ev = await db.select(db.localEvidence).getSingle();
+    expect(ev.durationSec, 40);
+    expect(ev.uploadState, UploadState.pending);
+    expect(await db.watchLastOdometer().first, 120);
   });
 }

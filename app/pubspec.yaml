@@ -28,6 +28,8 @@ dependencies:
   flutter_image_compress: 2.5.1
   google_mlkit_text_recognition: 0.17.1
   image: 4.10.1
+  background_downloader: 9.6.3
+  http: 1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +40,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: 2.35.1
   build_runner: 2.16.1
+  fake_cloud_firestore: 4.3.0
 
 flutter:
   uses-material-design: true

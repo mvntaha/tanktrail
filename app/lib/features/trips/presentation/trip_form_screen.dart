@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/sync/sync_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/ids.dart';
@@ -114,6 +115,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         await repo.endTrip(tripId: trip.id, endOdo: reading, photo: photo);
       }
       HapticFeedback.mediumImpact();
+      // Upload right away if there is internet; otherwise it waits.
+      ref.read(syncServiceProvider).kick().ignore();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(trip == null ? 'Trip started' : 'Trip ended')),
@@ -202,7 +205,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Saved on this phone. Uploading comes in a later update.',
+              'Saved on this phone first, then uploaded when there is internet.',
               textAlign: TextAlign.center,
               style: TextStyle(color: t.mutedForeground, fontSize: 13),
             ),

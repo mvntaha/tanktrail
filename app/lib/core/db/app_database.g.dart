@@ -179,6 +179,41 @@ class $LocalTripsTable extends LocalTrips
       'CHECK ("end_mock" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _startSyncMeta = const VerificationMeta(
+    'startSync',
+  );
+  @override
+  late final GeneratedColumn<String> startSync = GeneratedColumn<String>(
+    'start_sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(SyncState.local),
+  );
+  static const VerificationMeta _endSyncMeta = const VerificationMeta(
+    'endSync',
+  );
+  @override
+  late final GeneratedColumn<String> endSync = GeneratedColumn<String>(
+    'end_sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(SyncState.local),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -197,6 +232,9 @@ class $LocalTripsTable extends LocalTrips
     endLng,
     endAcc,
     endMock,
+    startSync,
+    endSync,
+    syncError,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -323,6 +361,24 @@ class $LocalTripsTable extends LocalTrips
         endMock.isAcceptableOrUnknown(data['end_mock']!, _endMockMeta),
       );
     }
+    if (data.containsKey('start_sync')) {
+      context.handle(
+        _startSyncMeta,
+        startSync.isAcceptableOrUnknown(data['start_sync']!, _startSyncMeta),
+      );
+    }
+    if (data.containsKey('end_sync')) {
+      context.handle(
+        _endSyncMeta,
+        endSync.isAcceptableOrUnknown(data['end_sync']!, _endSyncMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
     return context;
   }
 
@@ -396,6 +452,18 @@ class $LocalTripsTable extends LocalTrips
         DriftSqlType.bool,
         data['${effectivePrefix}end_mock'],
       ),
+      startSync: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}start_sync'],
+      )!,
+      endSync: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}end_sync'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
     );
   }
 
@@ -424,6 +492,11 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
   final double? endLng;
   final double? endAcc;
   final bool? endMock;
+
+  /// Sync of the start / end part to Firestore (schema v3), see [SyncState].
+  final String startSync;
+  final String endSync;
+  final String? syncError;
   const LocalTrip({
     required this.id,
     required this.driverId,
@@ -441,6 +514,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
     this.endLng,
     this.endAcc,
     this.endMock,
+    required this.startSync,
+    required this.endSync,
+    this.syncError,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -472,6 +548,11 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
     }
     if (!nullToAbsent || endMock != null) {
       map['end_mock'] = Variable<bool>(endMock);
+    }
+    map['start_sync'] = Variable<String>(startSync);
+    map['end_sync'] = Variable<String>(endSync);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
     }
     return map;
   }
@@ -506,6 +587,11 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
       endMock: endMock == null && nullToAbsent
           ? const Value.absent()
           : Value(endMock),
+      startSync: Value(startSync),
+      endSync: Value(endSync),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
     );
   }
 
@@ -531,6 +617,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
       endLng: serializer.fromJson<double?>(json['endLng']),
       endAcc: serializer.fromJson<double?>(json['endAcc']),
       endMock: serializer.fromJson<bool?>(json['endMock']),
+      startSync: serializer.fromJson<String>(json['startSync']),
+      endSync: serializer.fromJson<String>(json['endSync']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
     );
   }
   @override
@@ -553,6 +642,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
       'endLng': serializer.toJson<double?>(endLng),
       'endAcc': serializer.toJson<double?>(endAcc),
       'endMock': serializer.toJson<bool?>(endMock),
+      'startSync': serializer.toJson<String>(startSync),
+      'endSync': serializer.toJson<String>(endSync),
+      'syncError': serializer.toJson<String?>(syncError),
     };
   }
 
@@ -573,6 +665,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
     Value<double?> endLng = const Value.absent(),
     Value<double?> endAcc = const Value.absent(),
     Value<bool?> endMock = const Value.absent(),
+    String? startSync,
+    String? endSync,
+    Value<String?> syncError = const Value.absent(),
   }) => LocalTrip(
     id: id ?? this.id,
     driverId: driverId ?? this.driverId,
@@ -590,6 +685,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
     endLng: endLng.present ? endLng.value : this.endLng,
     endAcc: endAcc.present ? endAcc.value : this.endAcc,
     endMock: endMock.present ? endMock.value : this.endMock,
+    startSync: startSync ?? this.startSync,
+    endSync: endSync ?? this.endSync,
+    syncError: syncError.present ? syncError.value : this.syncError,
   );
   LocalTrip copyWithCompanion(LocalTripsCompanion data) {
     return LocalTrip(
@@ -611,6 +709,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
       endLng: data.endLng.present ? data.endLng.value : this.endLng,
       endAcc: data.endAcc.present ? data.endAcc.value : this.endAcc,
       endMock: data.endMock.present ? data.endMock.value : this.endMock,
+      startSync: data.startSync.present ? data.startSync.value : this.startSync,
+      endSync: data.endSync.present ? data.endSync.value : this.endSync,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
     );
   }
 
@@ -632,7 +733,10 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
           ..write('endLat: $endLat, ')
           ..write('endLng: $endLng, ')
           ..write('endAcc: $endAcc, ')
-          ..write('endMock: $endMock')
+          ..write('endMock: $endMock, ')
+          ..write('startSync: $startSync, ')
+          ..write('endSync: $endSync, ')
+          ..write('syncError: $syncError')
           ..write(')'))
         .toString();
   }
@@ -655,6 +759,9 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
     endLng,
     endAcc,
     endMock,
+    startSync,
+    endSync,
+    syncError,
   );
   @override
   bool operator ==(Object other) =>
@@ -675,7 +782,10 @@ class LocalTrip extends DataClass implements Insertable<LocalTrip> {
           other.endLat == this.endLat &&
           other.endLng == this.endLng &&
           other.endAcc == this.endAcc &&
-          other.endMock == this.endMock);
+          other.endMock == this.endMock &&
+          other.startSync == this.startSync &&
+          other.endSync == this.endSync &&
+          other.syncError == this.syncError);
 }
 
 class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
@@ -695,6 +805,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
   final Value<double?> endLng;
   final Value<double?> endAcc;
   final Value<bool?> endMock;
+  final Value<String> startSync;
+  final Value<String> endSync;
+  final Value<String?> syncError;
   final Value<int> rowid;
   const LocalTripsCompanion({
     this.id = const Value.absent(),
@@ -713,6 +826,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
     this.endLng = const Value.absent(),
     this.endAcc = const Value.absent(),
     this.endMock = const Value.absent(),
+    this.startSync = const Value.absent(),
+    this.endSync = const Value.absent(),
+    this.syncError = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalTripsCompanion.insert({
@@ -732,6 +848,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
     this.endLng = const Value.absent(),
     this.endAcc = const Value.absent(),
     this.endMock = const Value.absent(),
+    this.startSync = const Value.absent(),
+    this.endSync = const Value.absent(),
+    this.syncError = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        driverId = Value(driverId),
@@ -760,6 +879,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
     Expression<double>? endLng,
     Expression<double>? endAcc,
     Expression<bool>? endMock,
+    Expression<String>? startSync,
+    Expression<String>? endSync,
+    Expression<String>? syncError,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -779,6 +901,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
       if (endLng != null) 'end_lng': endLng,
       if (endAcc != null) 'end_acc': endAcc,
       if (endMock != null) 'end_mock': endMock,
+      if (startSync != null) 'start_sync': startSync,
+      if (endSync != null) 'end_sync': endSync,
+      if (syncError != null) 'sync_error': syncError,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -800,6 +925,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
     Value<double?>? endLng,
     Value<double?>? endAcc,
     Value<bool?>? endMock,
+    Value<String>? startSync,
+    Value<String>? endSync,
+    Value<String?>? syncError,
     Value<int>? rowid,
   }) {
     return LocalTripsCompanion(
@@ -819,6 +947,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
       endLng: endLng ?? this.endLng,
       endAcc: endAcc ?? this.endAcc,
       endMock: endMock ?? this.endMock,
+      startSync: startSync ?? this.startSync,
+      endSync: endSync ?? this.endSync,
+      syncError: syncError ?? this.syncError,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -874,6 +1005,15 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
     if (endMock.present) {
       map['end_mock'] = Variable<bool>(endMock.value);
     }
+    if (startSync.present) {
+      map['start_sync'] = Variable<String>(startSync.value);
+    }
+    if (endSync.present) {
+      map['end_sync'] = Variable<String>(endSync.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -899,6 +1039,9 @@ class LocalTripsCompanion extends UpdateCompanion<LocalTrip> {
           ..write('endLng: $endLng, ')
           ..write('endAcc: $endAcc, ')
           ..write('endMock: $endMock, ')
+          ..write('startSync: $startSync, ')
+          ..write('endSync: $endSync, ')
+          ..write('syncError: $syncError, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1051,6 +1194,49 @@ class $LocalEvidenceTable extends LocalEvidence
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _uploadStateMeta = const VerificationMeta(
+    'uploadState',
+  );
+  @override
+  late final GeneratedColumn<String> uploadState = GeneratedColumn<String>(
+    'upload_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(UploadState.pending),
+  );
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
+  @override
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _publicIdMeta = const VerificationMeta(
+    'publicId',
+  );
+  @override
+  late final GeneratedColumn<String> publicId = GeneratedColumn<String>(
+    'public_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _uploadErrorMeta = const VerificationMeta(
+    'uploadError',
+  );
+  @override
+  late final GeneratedColumn<String> uploadError = GeneratedColumn<String>(
+    'upload_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1067,6 +1253,10 @@ class $LocalEvidenceTable extends LocalEvidence
     mock,
     durationSec,
     ocrText,
+    uploadState,
+    url,
+    publicId,
+    uploadError,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1191,6 +1381,36 @@ class $LocalEvidenceTable extends LocalEvidence
         ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta),
       );
     }
+    if (data.containsKey('upload_state')) {
+      context.handle(
+        _uploadStateMeta,
+        uploadState.isAcceptableOrUnknown(
+          data['upload_state']!,
+          _uploadStateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('url')) {
+      context.handle(
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
+      );
+    }
+    if (data.containsKey('public_id')) {
+      context.handle(
+        _publicIdMeta,
+        publicId.isAcceptableOrUnknown(data['public_id']!, _publicIdMeta),
+      );
+    }
+    if (data.containsKey('upload_error')) {
+      context.handle(
+        _uploadErrorMeta,
+        uploadError.isAcceptableOrUnknown(
+          data['upload_error']!,
+          _uploadErrorMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1256,6 +1476,22 @@ class $LocalEvidenceTable extends LocalEvidence
         DriftSqlType.string,
         data['${effectivePrefix}ocr_text'],
       ),
+      uploadState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}upload_state'],
+      )!,
+      url: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url'],
+      ),
+      publicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}public_id'],
+      ),
+      uploadError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}upload_error'],
+      ),
     );
   }
 
@@ -1294,6 +1530,12 @@ class LocalEvidenceData extends DataClass
   /// What on-device OCR read from the photo (raw text), for an admin-only
   /// soft hint. Null for videos or when OCR found nothing. (Added in schema v2.)
   final String? ocrText;
+
+  /// Upload to Cloudinary (schema v3), see [UploadState].
+  final String uploadState;
+  final String? url;
+  final String? publicId;
+  final String? uploadError;
   const LocalEvidenceData({
     required this.id,
     required this.logId,
@@ -1309,6 +1551,10 @@ class LocalEvidenceData extends DataClass
     required this.mock,
     this.durationSec,
     this.ocrText,
+    required this.uploadState,
+    this.url,
+    this.publicId,
+    this.uploadError,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1330,6 +1576,16 @@ class LocalEvidenceData extends DataClass
     }
     if (!nullToAbsent || ocrText != null) {
       map['ocr_text'] = Variable<String>(ocrText);
+    }
+    map['upload_state'] = Variable<String>(uploadState);
+    if (!nullToAbsent || url != null) {
+      map['url'] = Variable<String>(url);
+    }
+    if (!nullToAbsent || publicId != null) {
+      map['public_id'] = Variable<String>(publicId);
+    }
+    if (!nullToAbsent || uploadError != null) {
+      map['upload_error'] = Variable<String>(uploadError);
     }
     return map;
   }
@@ -1354,6 +1610,14 @@ class LocalEvidenceData extends DataClass
       ocrText: ocrText == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrText),
+      uploadState: Value(uploadState),
+      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
+      publicId: publicId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(publicId),
+      uploadError: uploadError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(uploadError),
     );
   }
 
@@ -1377,6 +1641,10 @@ class LocalEvidenceData extends DataClass
       mock: serializer.fromJson<bool>(json['mock']),
       durationSec: serializer.fromJson<int?>(json['durationSec']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
+      uploadState: serializer.fromJson<String>(json['uploadState']),
+      url: serializer.fromJson<String?>(json['url']),
+      publicId: serializer.fromJson<String?>(json['publicId']),
+      uploadError: serializer.fromJson<String?>(json['uploadError']),
     );
   }
   @override
@@ -1397,6 +1665,10 @@ class LocalEvidenceData extends DataClass
       'mock': serializer.toJson<bool>(mock),
       'durationSec': serializer.toJson<int?>(durationSec),
       'ocrText': serializer.toJson<String?>(ocrText),
+      'uploadState': serializer.toJson<String>(uploadState),
+      'url': serializer.toJson<String?>(url),
+      'publicId': serializer.toJson<String?>(publicId),
+      'uploadError': serializer.toJson<String?>(uploadError),
     };
   }
 
@@ -1415,6 +1687,10 @@ class LocalEvidenceData extends DataClass
     bool? mock,
     Value<int?> durationSec = const Value.absent(),
     Value<String?> ocrText = const Value.absent(),
+    String? uploadState,
+    Value<String?> url = const Value.absent(),
+    Value<String?> publicId = const Value.absent(),
+    Value<String?> uploadError = const Value.absent(),
   }) => LocalEvidenceData(
     id: id ?? this.id,
     logId: logId ?? this.logId,
@@ -1430,6 +1706,10 @@ class LocalEvidenceData extends DataClass
     mock: mock ?? this.mock,
     durationSec: durationSec.present ? durationSec.value : this.durationSec,
     ocrText: ocrText.present ? ocrText.value : this.ocrText,
+    uploadState: uploadState ?? this.uploadState,
+    url: url.present ? url.value : this.url,
+    publicId: publicId.present ? publicId.value : this.publicId,
+    uploadError: uploadError.present ? uploadError.value : this.uploadError,
   );
   LocalEvidenceData copyWithCompanion(LocalEvidenceCompanion data) {
     return LocalEvidenceData(
@@ -1451,6 +1731,14 @@ class LocalEvidenceData extends DataClass
           ? data.durationSec.value
           : this.durationSec,
       ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+      uploadState: data.uploadState.present
+          ? data.uploadState.value
+          : this.uploadState,
+      url: data.url.present ? data.url.value : this.url,
+      publicId: data.publicId.present ? data.publicId.value : this.publicId,
+      uploadError: data.uploadError.present
+          ? data.uploadError.value
+          : this.uploadError,
     );
   }
 
@@ -1470,7 +1758,11 @@ class LocalEvidenceData extends DataClass
           ..write('acc: $acc, ')
           ..write('mock: $mock, ')
           ..write('durationSec: $durationSec, ')
-          ..write('ocrText: $ocrText')
+          ..write('ocrText: $ocrText, ')
+          ..write('uploadState: $uploadState, ')
+          ..write('url: $url, ')
+          ..write('publicId: $publicId, ')
+          ..write('uploadError: $uploadError')
           ..write(')'))
         .toString();
   }
@@ -1491,6 +1783,10 @@ class LocalEvidenceData extends DataClass
     mock,
     durationSec,
     ocrText,
+    uploadState,
+    url,
+    publicId,
+    uploadError,
   );
   @override
   bool operator ==(Object other) =>
@@ -1509,7 +1805,11 @@ class LocalEvidenceData extends DataClass
           other.acc == this.acc &&
           other.mock == this.mock &&
           other.durationSec == this.durationSec &&
-          other.ocrText == this.ocrText);
+          other.ocrText == this.ocrText &&
+          other.uploadState == this.uploadState &&
+          other.url == this.url &&
+          other.publicId == this.publicId &&
+          other.uploadError == this.uploadError);
 }
 
 class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
@@ -1527,6 +1827,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
   final Value<bool> mock;
   final Value<int?> durationSec;
   final Value<String?> ocrText;
+  final Value<String> uploadState;
+  final Value<String?> url;
+  final Value<String?> publicId;
+  final Value<String?> uploadError;
   final Value<int> rowid;
   const LocalEvidenceCompanion({
     this.id = const Value.absent(),
@@ -1543,6 +1847,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     this.mock = const Value.absent(),
     this.durationSec = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.uploadState = const Value.absent(),
+    this.url = const Value.absent(),
+    this.publicId = const Value.absent(),
+    this.uploadError = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalEvidenceCompanion.insert({
@@ -1560,6 +1868,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     required bool mock,
     this.durationSec = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.uploadState = const Value.absent(),
+    this.url = const Value.absent(),
+    this.publicId = const Value.absent(),
+    this.uploadError = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        logId = Value(logId),
@@ -1588,6 +1900,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     Expression<bool>? mock,
     Expression<int>? durationSec,
     Expression<String>? ocrText,
+    Expression<String>? uploadState,
+    Expression<String>? url,
+    Expression<String>? publicId,
+    Expression<String>? uploadError,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1605,6 +1921,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
       if (mock != null) 'mock': mock,
       if (durationSec != null) 'duration_sec': durationSec,
       if (ocrText != null) 'ocr_text': ocrText,
+      if (uploadState != null) 'upload_state': uploadState,
+      if (url != null) 'url': url,
+      if (publicId != null) 'public_id': publicId,
+      if (uploadError != null) 'upload_error': uploadError,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1624,6 +1944,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     Value<bool>? mock,
     Value<int?>? durationSec,
     Value<String?>? ocrText,
+    Value<String>? uploadState,
+    Value<String?>? url,
+    Value<String?>? publicId,
+    Value<String?>? uploadError,
     Value<int>? rowid,
   }) {
     return LocalEvidenceCompanion(
@@ -1641,6 +1965,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
       mock: mock ?? this.mock,
       durationSec: durationSec ?? this.durationSec,
       ocrText: ocrText ?? this.ocrText,
+      uploadState: uploadState ?? this.uploadState,
+      url: url ?? this.url,
+      publicId: publicId ?? this.publicId,
+      uploadError: uploadError ?? this.uploadError,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1690,6 +2018,18 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     if (ocrText.present) {
       map['ocr_text'] = Variable<String>(ocrText.value);
     }
+    if (uploadState.present) {
+      map['upload_state'] = Variable<String>(uploadState.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (publicId.present) {
+      map['public_id'] = Variable<String>(publicId.value);
+    }
+    if (uploadError.present) {
+      map['upload_error'] = Variable<String>(uploadError.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1713,6 +2053,10 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
           ..write('mock: $mock, ')
           ..write('durationSec: $durationSec, ')
           ..write('ocrText: $ocrText, ')
+          ..write('uploadState: $uploadState, ')
+          ..write('url: $url, ')
+          ..write('publicId: $publicId, ')
+          ..write('uploadError: $uploadError, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1877,6 +2221,27 @@ class $LocalFuelLogsTable extends LocalFuelLogs
     requiredDuringInsert: false,
     defaultValue: const Constant('pending'),
   );
+  static const VerificationMeta _syncMeta = const VerificationMeta('sync');
+  @override
+  late final GeneratedColumn<String> sync = GeneratedColumn<String>(
+    'sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(SyncState.local),
+  );
+  static const VerificationMeta _syncErrorMeta = const VerificationMeta(
+    'syncError',
+  );
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+    'sync_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1894,6 +2259,8 @@ class $LocalFuelLogsTable extends LocalFuelLogs
     acc,
     mock,
     status,
+    sync,
+    syncError,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2025,6 +2392,18 @@ class $LocalFuelLogsTable extends LocalFuelLogs
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('sync')) {
+      context.handle(
+        _syncMeta,
+        sync.isAcceptableOrUnknown(data['sync']!, _syncMeta),
+      );
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(
+        _syncErrorMeta,
+        syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta),
+      );
+    }
     return context;
   }
 
@@ -2094,6 +2473,14 @@ class $LocalFuelLogsTable extends LocalFuelLogs
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      sync: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync'],
+      )!,
+      syncError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_error'],
+      ),
     );
   }
 
@@ -2129,6 +2516,10 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
 
   /// Mirrors the server status once synced; 'pending' until the admin reviews.
   final String status;
+
+  /// Sync to Firestore (schema v3), see [SyncState].
+  final String sync;
+  final String? syncError;
   const LocalFuelLog({
     required this.id,
     required this.driverId,
@@ -2145,6 +2536,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
     required this.acc,
     required this.mock,
     required this.status,
+    required this.sync,
+    this.syncError,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2164,6 +2557,10 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
     map['acc'] = Variable<double>(acc);
     map['mock'] = Variable<bool>(mock);
     map['status'] = Variable<String>(status);
+    map['sync'] = Variable<String>(sync);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
     return map;
   }
 
@@ -2184,6 +2581,10 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
       acc: Value(acc),
       mock: Value(mock),
       status: Value(status),
+      sync: Value(sync),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
     );
   }
 
@@ -2208,6 +2609,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
       acc: serializer.fromJson<double>(json['acc']),
       mock: serializer.fromJson<bool>(json['mock']),
       status: serializer.fromJson<String>(json['status']),
+      sync: serializer.fromJson<String>(json['sync']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
     );
   }
   @override
@@ -2229,6 +2632,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
       'acc': serializer.toJson<double>(acc),
       'mock': serializer.toJson<bool>(mock),
       'status': serializer.toJson<String>(status),
+      'sync': serializer.toJson<String>(sync),
+      'syncError': serializer.toJson<String?>(syncError),
     };
   }
 
@@ -2248,6 +2653,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
     double? acc,
     bool? mock,
     String? status,
+    String? sync,
+    Value<String?> syncError = const Value.absent(),
   }) => LocalFuelLog(
     id: id ?? this.id,
     driverId: driverId ?? this.driverId,
@@ -2264,6 +2671,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
     acc: acc ?? this.acc,
     mock: mock ?? this.mock,
     status: status ?? this.status,
+    sync: sync ?? this.sync,
+    syncError: syncError.present ? syncError.value : this.syncError,
   );
   LocalFuelLog copyWithCompanion(LocalFuelLogsCompanion data) {
     return LocalFuelLog(
@@ -2286,6 +2695,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
       acc: data.acc.present ? data.acc.value : this.acc,
       mock: data.mock.present ? data.mock.value : this.mock,
       status: data.status.present ? data.status.value : this.status,
+      sync: data.sync.present ? data.sync.value : this.sync,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
     );
   }
 
@@ -2306,7 +2717,9 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
           ..write('lng: $lng, ')
           ..write('acc: $acc, ')
           ..write('mock: $mock, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('sync: $sync, ')
+          ..write('syncError: $syncError')
           ..write(')'))
         .toString();
   }
@@ -2328,6 +2741,8 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
     acc,
     mock,
     status,
+    sync,
+    syncError,
   );
   @override
   bool operator ==(Object other) =>
@@ -2347,7 +2762,9 @@ class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
           other.lng == this.lng &&
           other.acc == this.acc &&
           other.mock == this.mock &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.sync == this.sync &&
+          other.syncError == this.syncError);
 }
 
 class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
@@ -2366,6 +2783,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
   final Value<double> acc;
   final Value<bool> mock;
   final Value<String> status;
+  final Value<String> sync;
+  final Value<String?> syncError;
   final Value<int> rowid;
   const LocalFuelLogsCompanion({
     this.id = const Value.absent(),
@@ -2383,6 +2802,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
     this.acc = const Value.absent(),
     this.mock = const Value.absent(),
     this.status = const Value.absent(),
+    this.sync = const Value.absent(),
+    this.syncError = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalFuelLogsCompanion.insert({
@@ -2401,6 +2822,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
     required double acc,
     required bool mock,
     this.status = const Value.absent(),
+    this.sync = const Value.absent(),
+    this.syncError = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        driverId = Value(driverId),
@@ -2432,6 +2855,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
     Expression<double>? acc,
     Expression<bool>? mock,
     Expression<String>? status,
+    Expression<String>? sync,
+    Expression<String>? syncError,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2450,6 +2875,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
       if (acc != null) 'acc': acc,
       if (mock != null) 'mock': mock,
       if (status != null) 'status': status,
+      if (sync != null) 'sync': sync,
+      if (syncError != null) 'sync_error': syncError,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2470,6 +2897,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
     Value<double>? acc,
     Value<bool>? mock,
     Value<String>? status,
+    Value<String>? sync,
+    Value<String?>? syncError,
     Value<int>? rowid,
   }) {
     return LocalFuelLogsCompanion(
@@ -2488,6 +2917,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
       acc: acc ?? this.acc,
       mock: mock ?? this.mock,
       status: status ?? this.status,
+      sync: sync ?? this.sync,
+      syncError: syncError ?? this.syncError,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2540,6 +2971,12 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (sync.present) {
+      map['sync'] = Variable<String>(sync.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2564,6 +3001,8 @@ class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
           ..write('acc: $acc, ')
           ..write('mock: $mock, ')
           ..write('status: $status, ')
+          ..write('sync: $sync, ')
+          ..write('syncError: $syncError, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2604,6 +3043,9 @@ typedef $$LocalTripsTableCreateCompanionBuilder = LocalTripsCompanion Function({
   Value<double?> endLng,
   Value<double?> endAcc,
   Value<bool?> endMock,
+  Value<String> startSync,
+  Value<String> endSync,
+  Value<String?> syncError,
   Value<int> rowid,
 });
 typedef $$LocalTripsTableUpdateCompanionBuilder = LocalTripsCompanion Function({
@@ -2623,6 +3065,9 @@ typedef $$LocalTripsTableUpdateCompanionBuilder = LocalTripsCompanion Function({
   Value<double?> endLng,
   Value<double?> endAcc,
   Value<bool?> endMock,
+  Value<String> startSync,
+  Value<String> endSync,
+  Value<String?> syncError,
   Value<int> rowid,
 });
 
@@ -2712,6 +3157,21 @@ class $$LocalTripsTableFilterComposer
 
   ColumnFilters<bool> get endMock => $composableBuilder(
     column: $table.endMock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get startSync => $composableBuilder(
+    column: $table.startSync,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get endSync => $composableBuilder(
+    column: $table.endSync,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2804,6 +3264,21 @@ class $$LocalTripsTableOrderingComposer
     column: $table.endMock,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get startSync => $composableBuilder(
+    column: $table.startSync,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get endSync => $composableBuilder(
+    column: $table.endSync,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalTripsTableAnnotationComposer
@@ -2864,6 +3339,15 @@ class $$LocalTripsTableAnnotationComposer
 
   GeneratedColumn<bool> get endMock =>
       $composableBuilder(column: $table.endMock, builder: (column) => column);
+
+  GeneratedColumn<String> get startSync =>
+      $composableBuilder(column: $table.startSync, builder: (column) => column);
+
+  GeneratedColumn<String> get endSync =>
+      $composableBuilder(column: $table.endSync, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
 }
 
 class $$LocalTripsTableTableManager
@@ -2913,6 +3397,9 @@ class $$LocalTripsTableTableManager
                 Value<double?> endLng = const Value.absent(),
                 Value<double?> endAcc = const Value.absent(),
                 Value<bool?> endMock = const Value.absent(),
+                Value<String> startSync = const Value.absent(),
+                Value<String> endSync = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalTripsCompanion(
                 id: id,
@@ -2931,6 +3418,9 @@ class $$LocalTripsTableTableManager
                 endLng: endLng,
                 endAcc: endAcc,
                 endMock: endMock,
+                startSync: startSync,
+                endSync: endSync,
+                syncError: syncError,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2951,6 +3441,9 @@ class $$LocalTripsTableTableManager
                 Value<double?> endLng = const Value.absent(),
                 Value<double?> endAcc = const Value.absent(),
                 Value<bool?> endMock = const Value.absent(),
+                Value<String> startSync = const Value.absent(),
+                Value<String> endSync = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalTripsCompanion.insert(
                 id: id,
@@ -2969,6 +3462,9 @@ class $$LocalTripsTableTableManager
                 endLng: endLng,
                 endAcc: endAcc,
                 endMock: endMock,
+                startSync: startSync,
+                endSync: endSync,
+                syncError: syncError,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3018,6 +3514,10 @@ typedef $$LocalEvidenceTableCreateCompanionBuilder =
       required bool mock,
       Value<int?> durationSec,
       Value<String?> ocrText,
+      Value<String> uploadState,
+      Value<String?> url,
+      Value<String?> publicId,
+      Value<String?> uploadError,
       Value<int> rowid,
     });
 typedef $$LocalEvidenceTableUpdateCompanionBuilder =
@@ -3036,6 +3536,10 @@ typedef $$LocalEvidenceTableUpdateCompanionBuilder =
       Value<bool> mock,
       Value<int?> durationSec,
       Value<String?> ocrText,
+      Value<String> uploadState,
+      Value<String?> url,
+      Value<String?> publicId,
+      Value<String?> uploadError,
       Value<int> rowid,
     });
 
@@ -3115,6 +3619,26 @@ class $$LocalEvidenceTableFilterComposer
 
   ColumnFilters<String> get ocrText => $composableBuilder(
     column: $table.ocrText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uploadState => $composableBuilder(
+    column: $table.uploadState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get publicId => $composableBuilder(
+    column: $table.publicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uploadError => $composableBuilder(
+    column: $table.uploadError,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3197,6 +3721,26 @@ class $$LocalEvidenceTableOrderingComposer
     column: $table.ocrText,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get uploadState => $composableBuilder(
+    column: $table.uploadState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get publicId => $composableBuilder(
+    column: $table.publicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uploadError => $composableBuilder(
+    column: $table.uploadError,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalEvidenceTableAnnotationComposer
@@ -3253,6 +3797,22 @@ class $$LocalEvidenceTableAnnotationComposer
 
   GeneratedColumn<String> get ocrText =>
       $composableBuilder(column: $table.ocrText, builder: (column) => column);
+
+  GeneratedColumn<String> get uploadState => $composableBuilder(
+    column: $table.uploadState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get publicId =>
+      $composableBuilder(column: $table.publicId, builder: (column) => column);
+
+  GeneratedColumn<String> get uploadError => $composableBuilder(
+    column: $table.uploadError,
+    builder: (column) => column,
+  );
 }
 
 class $$LocalEvidenceTableTableManager
@@ -3304,6 +3864,10 @@ class $$LocalEvidenceTableTableManager
                 Value<bool> mock = const Value.absent(),
                 Value<int?> durationSec = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
+                Value<String> uploadState = const Value.absent(),
+                Value<String?> url = const Value.absent(),
+                Value<String?> publicId = const Value.absent(),
+                Value<String?> uploadError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalEvidenceCompanion(
                 id: id,
@@ -3320,6 +3884,10 @@ class $$LocalEvidenceTableTableManager
                 mock: mock,
                 durationSec: durationSec,
                 ocrText: ocrText,
+                uploadState: uploadState,
+                url: url,
+                publicId: publicId,
+                uploadError: uploadError,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3338,6 +3906,10 @@ class $$LocalEvidenceTableTableManager
                 required bool mock,
                 Value<int?> durationSec = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
+                Value<String> uploadState = const Value.absent(),
+                Value<String?> url = const Value.absent(),
+                Value<String?> publicId = const Value.absent(),
+                Value<String?> uploadError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalEvidenceCompanion.insert(
                 id: id,
@@ -3354,6 +3926,10 @@ class $$LocalEvidenceTableTableManager
                 mock: mock,
                 durationSec: durationSec,
                 ocrText: ocrText,
+                uploadState: uploadState,
+                url: url,
+                publicId: publicId,
+                uploadError: uploadError,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3407,6 +3983,8 @@ typedef $$LocalFuelLogsTableCreateCompanionBuilder =
       required double acc,
       required bool mock,
       Value<String> status,
+      Value<String> sync,
+      Value<String?> syncError,
       Value<int> rowid,
     });
 typedef $$LocalFuelLogsTableUpdateCompanionBuilder =
@@ -3426,6 +4004,8 @@ typedef $$LocalFuelLogsTableUpdateCompanionBuilder =
       Value<double> acc,
       Value<bool> mock,
       Value<String> status,
+      Value<String> sync,
+      Value<String?> syncError,
       Value<int> rowid,
     });
 
@@ -3510,6 +4090,16 @@ class $$LocalFuelLogsTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sync => $composableBuilder(
+    column: $table.sync,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+    column: $table.syncError,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3597,6 +4187,16 @@ class $$LocalFuelLogsTableOrderingComposer
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get sync => $composableBuilder(
+    column: $table.sync,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+    column: $table.syncError,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalFuelLogsTableAnnotationComposer
@@ -3656,6 +4256,12 @@ class $$LocalFuelLogsTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get sync =>
+      $composableBuilder(column: $table.sync, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
 }
 
 class $$LocalFuelLogsTableTableManager
@@ -3704,6 +4310,8 @@ class $$LocalFuelLogsTableTableManager
                 Value<double> acc = const Value.absent(),
                 Value<bool> mock = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String> sync = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalFuelLogsCompanion(
                 id: id,
@@ -3721,6 +4329,8 @@ class $$LocalFuelLogsTableTableManager
                 acc: acc,
                 mock: mock,
                 status: status,
+                sync: sync,
+                syncError: syncError,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3740,6 +4350,8 @@ class $$LocalFuelLogsTableTableManager
                 required double acc,
                 required bool mock,
                 Value<String> status = const Value.absent(),
+                Value<String> sync = const Value.absent(),
+                Value<String?> syncError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalFuelLogsCompanion.insert(
                 id: id,
@@ -3757,6 +4369,8 @@ class $$LocalFuelLogsTableTableManager
                 acc: acc,
                 mock: mock,
                 status: status,
+                sync: sync,
+                syncError: syncError,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

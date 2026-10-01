@@ -1,0 +1,177 @@
+/* Owner's design tokens (shadcn / Tailwind v4 style). SOURCE OF TRUTH for
+   app/lib/core/theme/app_tokens.dart. Only :root (light) is wired in the app;
+   .dark is defined in Dart but unused. Fonts: only Inter is bundled; the serif,
+   mono and dark-theme sans stacks are not used in the Android app. */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f4f5f7;
+  --foreground: #0c121a;
+  --card: #ffffff;
+  --card-foreground: #0c121a;
+  --popover: #ffffff;
+  --popover-foreground: #0c121a;
+  --primary: #297cef;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ebee;
+  --secondary-foreground: #222933;
+  --muted: #eceff1;
+  --muted-foreground: #565e69;
+  --accent: #d9e6f9;
+  --accent-foreground: #002c78;
+  --destructive: #ee343b;
+  --destructive-foreground: #ffffff;
+  --border: #dbdee2;
+  --input: #e2e5e8;
+  --ring: #297cef;
+  --chart-1: #297cef;
+  --chart-2: #00a381;
+  --chart-3: #864ad2;
+  --chart-4: #f3680f;
+  --chart-5: #ec2773;
+  --sidebar: #eceff1;
+  --sidebar-foreground: #0c121a;
+  --sidebar-primary: #297cef;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d9e6f9;
+  --sidebar-accent-foreground: #002c78;
+  --sidebar-border: #dbdee2;
+  --sidebar-ring: #297cef;
+  --font-sans: Inter, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: JetBrains Mono, monospace;
+  --radius: 1.5rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 28px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.10;
+  --shadow-color: #4e5661;
+  --shadow-2xs: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.05);
+  --shadow-xs: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.05);
+  --shadow-sm: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.10), 0px 1px 2px -1px hsl(214.7368 10.8571% 34.3137% / 0.10);
+  --shadow: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.10), 0px 1px 2px -1px hsl(214.7368 10.8571% 34.3137% / 0.10);
+  --shadow-md: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.10), 0px 2px 4px -1px hsl(214.7368 10.8571% 34.3137% / 0.10);
+  --shadow-lg: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.10), 0px 4px 6px -1px hsl(214.7368 10.8571% 34.3137% / 0.10);
+  --shadow-xl: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.10), 0px 8px 10px -1px hsl(214.7368 10.8571% 34.3137% / 0.10);
+  --shadow-2xl: 0px 2px 28px 0px hsl(214.7368 10.8571% 34.3137% / 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: #090b0f;
+  --foreground: #f0f2f4;
+  --card: #13161b;
+  --card-foreground: #f0f2f4;
+  --popover: #1a1d22;
+  --popover-foreground: #f0f2f4;
+  --primary: #3a8cff;
+  --primary-foreground: #040609;
+  --secondary: #1c2024;
+  --secondary-foreground: #d9dfe5;
+  --muted: #181b1f;
+  --muted-foreground: #8f9aa4;
+  --accent: #152946;
+  --accent-foreground: #a5d0ff;
+  --destructive: #ff515a;
+  --destructive-foreground: #ffffff;
+  --border: #26292e;
+  --input: #26292e;
+  --ring: #3a8cff;
+  --chart-1: #3a8cff;
+  --chart-2: #00b793;
+  --chart-3: #9b61ea;
+  --chart-4: #ff7527;
+  --chart-5: #fb3a7f;
+  --sidebar: #0f1216;
+  --sidebar-foreground: #f0f2f4;
+  --sidebar-primary: #3a8cff;
+  --sidebar-primary-foreground: #040609;
+  --sidebar-accent: #152946;
+  --sidebar-accent-foreground: #a5d0ff;
+  --sidebar-border: #212429;
+  --sidebar-ring: #3a8cff;
+  --font-sans: Segoe UI, Helvetica Neue, Helvetica, Lucida Grande, Arial, Ubuntu, Cantarell, Fira Sans, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  --radius: 1.5rem;
+  --shadow-x: 0px;
+  --shadow-y: 4px;
+  --shadow-blur: 40px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.45;
+  --shadow-color: #000000;
+  --shadow-2xs: 0px 4px 40px 0px hsl(0 0% 0% / 0.23);
+  --shadow-xs: 0px 4px 40px 0px hsl(0 0% 0% / 0.23);
+  --shadow-sm: 0px 4px 40px 0px hsl(0 0% 0% / 0.45), 0px 1px 2px -1px hsl(0 0% 0% / 0.45);
+  --shadow: 0px 4px 40px 0px hsl(0 0% 0% / 0.45), 0px 1px 2px -1px hsl(0 0% 0% / 0.45);
+  --shadow-md: 0px 4px 40px 0px hsl(0 0% 0% / 0.45), 0px 2px 4px -1px hsl(0 0% 0% / 0.45);
+  --shadow-lg: 0px 4px 40px 0px hsl(0 0% 0% / 0.45), 0px 4px 6px -1px hsl(0 0% 0% / 0.45);
+  --shadow-xl: 0px 4px 40px 0px hsl(0 0% 0% / 0.45), 0px 8px 10px -1px hsl(0 0% 0% / 0.45);
+  --shadow-2xl: 0px 4px 40px 0px hsl(0 0% 0% / 1.13);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

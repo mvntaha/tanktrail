@@ -45,5 +45,17 @@ class CapturedMedia {
   final int? durationSec;
 
   /// Raw OCR text from the framed area (photos only). Admin-only soft hint.
+  /// Filled in after capture (OCR runs in the background).
   final String? ocrText;
+
+  CapturedMedia withOcrText(String? text) => CapturedMedia(
+        id: id,
+        type: type,
+        filePath: filePath,
+        sha256: sha256,
+        capturedAtDevice: capturedAtDevice,
+        fix: fix,
+        durationSec: durationSec,
+        ocrText: text,
+      );
 }

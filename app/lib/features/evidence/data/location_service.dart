@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -46,12 +48,73 @@ class LocationService {
         timeLimit: const Duration(seconds: 45),
       ),
     );
-    return GeoFix(
-      lat: p.latitude,
-      lng: p.longitude,
-      accuracyM: p.accuracy,
-      mock: p.isMocked,
-      at: p.timestamp,
+    return _toFix(p);
+  }
+
+  /// Live fixes, about one per second. Used ONLY while a capture screen is
+  /// open, so a fix is ready the moment the driver taps the shutter.
+  Stream<GeoFix> watch() => Geolocator.getPositionStream(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.best,
+          intervalDuration: const Duration(seconds: 1),
+        ),
+      ).map(_toFix);
+
+  static GeoFix _toFix(Position p) => GeoFix(
+        lat: p.latitude,
+        lng: p.longitude,
+        accuracyM: p.accuracy,
+        mock: p.isMocked,
+        at: p.timestamp,
+      );
+}
+
+/// Warms up GPS while a capture screen is open (the screen calls [stop] when
+/// it closes). Not tracking: it runs only for the seconds the camera is shown,
+/// and only the fix at the shutter moment is kept.
+class GpsWarmup {
+  GpsWarmup(this._service);
+
+  final LocationService _service;
+  StreamSubscription<GeoFix>? _sub;
+  GeoFix? _latest;
+  final _next = <Completer<GeoFix>>[];
+
+  /// A fix this recent counts as "at the moment of capture".
+  static const maxAge = Duration(seconds: 10);
+
+  void start() {
+    _sub ??= _service.watch().listen(
+      (fix) {
+        _latest = fix;
+        for (final c in _next) {
+          if (!c.isCompleted) c.complete(fix);
+        }
+        _next.clear();
+      },
+      onError: (Object _) {}, // a failed stream just means we wait for currentFix
     );
+  }
+
+  void stop() {
+    _sub?.cancel();
+    _sub = null;
+  }
+
+  /// The fix for a capture at [at]: the warm one if it's fresh, otherwise the
+  /// next one from the stream, otherwise a one-shot request. Null on failure.
+  Future<GeoFix?> fixFor(DateTime at) async {
+    final latest = _latest;
+    if (latest != null && at.difference(latest.at).abs() <= maxAge) return latest;
+    try {
+      if (_sub != null) {
+        final c = Completer<GeoFix>();
+        _next.add(c);
+        return await c.future.timeout(const Duration(seconds: 45), onTimeout: _service.currentFix);
+      }
+      return await _service.currentFix();
+    } catch (_) {
+      return null; // no GPS signal; the screen offers "Try again"
+    }
   }
 }

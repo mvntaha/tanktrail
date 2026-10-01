@@ -9,7 +9,6 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/ids.dart';
 import '../data/location_service.dart';
 import '../data/media_store.dart';
-import '../data/ocr_service.dart';
 import '../domain/captured_media.dart';
 
 /// In-app camera for one evidence photo (no gallery picker, by design).
@@ -50,30 +49,35 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
   bool _busy = false;
   String _busyText = '';
   Offset? _focusAt;
+  late final GpsWarmup _gps = GpsWarmup(ref.read(locationServiceProvider));
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _gps.start(); // a fix is usually ready by the time the driver taps
     _init();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _gps.stop();
     _controller?.dispose();
     super.dispose();
   }
 
-  // The camera must be released when the app goes to the background.
+  // The camera (and GPS warm-up) must be released when the app goes to the background.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final c = _controller;
     if (state == AppLifecycleState.inactive && c != null) {
+      _gps.stop();
       _controller = null;
       c.dispose();
       if (mounted) setState(() {});
     } else if (state == AppLifecycleState.resumed && _controller == null) {
+      _gps.start();
       _init();
     }
   }
@@ -140,27 +144,26 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
     HapticFeedback.mediumImpact();
     setState(() {
       _busy = true;
-      _busyText = 'Saving photo and getting location...';
+      _busyText = 'Saving photo...';
     });
 
     final capturedAt = DateTime.now();
-    final location = ref.read(locationServiceProvider);
-    // Start GPS right away so it runs while the photo is processed. Failure
-    // becomes null (not an exception) so an early GPS error can't go unhandled.
-    Future<GeoFix?> startFix() => location.currentFix().then<GeoFix?>((f) => f, onError: (_) => null);
-    var fixFuture = startFix();
+    final clock = Stopwatch()..start();
+    // Usually returns the warmed-up fix at once. Never throws (null = no signal).
+    final fixFuture = _gps.fixFor(capturedAt);
 
     try {
       final shot = await c.takePicture();
+      final tShot = clock.elapsedMilliseconds;
       final mediaId = newId();
       final stored = await ref.read(mediaStoreProvider).storePhoto(
             sourcePath: shot.path,
             logId: widget.logId,
             mediaId: mediaId,
           );
+      final tStored = clock.elapsedMilliseconds;
 
-      // OCR runs while GPS is still searching, so it adds no waiting.
-      final ocrText = await ref.read(ocrServiceProvider).read(stored.path, widget.guide);
+      if (mounted) setState(() => _busyText = 'Getting location...');
       var fix = await fixFuture;
       while (fix == null) {
         if (!mounted) return;
@@ -169,8 +172,12 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
           setState(() => _busy = false);
           return;
         }
-        fix = await startFix();
+        fix = await _gps.fixFor(DateTime.now());
       }
+      // OCR is NOT done here: the form runs it in the background (admin hint only).
+      debugPrint('[capture] shutter ${tShot}ms, store ${tStored - tShot}ms, '
+          'gps wait ${clock.elapsedMilliseconds - tStored}ms '
+          '(fix age ${capturedAt.difference(fix.at).inMilliseconds}ms, ±${fix.accuracyM.round()}m)');
 
       if (!mounted) return;
       Navigator.pop(
@@ -182,7 +189,6 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
           sha256: stored.sha256,
           capturedAtDevice: capturedAt,
           fix: fix,
-          ocrText: ocrText,
         ),
       );
     } catch (e) {

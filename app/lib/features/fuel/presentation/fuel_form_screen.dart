@@ -11,6 +11,7 @@ import '../../../core/utils/format.dart';
 import '../../../core/utils/ids.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/session.dart';
+import '../../evidence/data/ocr_service.dart';
 import '../../evidence/domain/captured_media.dart';
 import '../../evidence/presentation/camera_capture_screen.dart';
 import '../../evidence/presentation/evidence_slot.dart';
@@ -42,6 +43,8 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
   String _fuelType = 'petrol';
   String? _paidBy; // no default: who paid must be a deliberate choice
   bool _totalTypedByHand = false;
+  // OCR runs in the background after each photo, while the driver types.
+  final _ocr = <String, Future<String?>>{};
   bool _saving = false;
 
   @override
@@ -87,7 +90,10 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
       type: 'odometer',
       hint: 'Show the ODO (total km), not TRIP',
     ));
-    if (m != null && mounted) _set(_odoPhoto, m, (v) => _odoPhoto = v);
+    if (m != null && mounted) {
+      _set(_odoPhoto, m, (v) => _odoPhoto = v);
+      _ocr[m.id] = ref.read(ocrServiceProvider).readWithin(m.filePath, CameraCaptureScreen.odometerGuide);
+    }
   }
 
   Future<void> _takeVideo() async {
@@ -102,7 +108,10 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
       hint: 'Pump display: rupees, litres and price all visible',
       guide: CameraCaptureScreen.pumpGuide,
     ));
-    if (m != null && mounted) _set(_pumpPhoto, m, (v) => _pumpPhoto = v);
+    if (m != null && mounted) {
+      _set(_pumpPhoto, m, (v) => _pumpPhoto = v);
+      _ocr[m.id] = ref.read(ocrServiceProvider).readWithin(m.filePath, CameraCaptureScreen.pumpGuide);
+    }
   }
 
   Future<bool> _confirm(String title, String body) async {
@@ -163,8 +172,9 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
             total: total,
             fuelType: _fuelType,
             paidBy: _paidBy!,
-            odometerPhoto: _odoPhoto!,
-            pumpPhoto: _pumpPhoto!,
+            // Usually finished long ago; at most a few seconds' wait, never a block.
+            odometerPhoto: _odoPhoto!.withOcrText(await _ocr[_odoPhoto!.id]),
+            pumpPhoto: _pumpPhoto!.withOcrText(await _ocr[_pumpPhoto!.id]),
             pumpVideo: _video!,
           );
       HapticFeedback.mediumImpact();

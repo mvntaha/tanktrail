@@ -26,5 +26,10 @@ for (const c of ['trips', 'fuelLogs']) {
         ` geo=[${Object.keys(geo)}] coordsInPublicDoc=${JSON.stringify(x).includes('"lat"')}`,
     );
     for (const e of ev) console.log(`    ${e.type}: ${e.url}`);
+    const edits = await d.ref.collection('edits').orderBy('editedAt').get();
+    for (const h of edits.docs) {
+      const p = h.data();
+      console.log(`    edit ${h.id} by ${p.editedBy} at ${p.editedAt?.toDate().toISOString()} previous=${JSON.stringify(p.previous)}`);
+    }
   }
 }

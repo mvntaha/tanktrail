@@ -8,7 +8,9 @@ import '../../features/auth/domain/session.dart';
 import '../../features/auth/presentation/location_notice_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/status_screens.dart';
+import '../../features/feed/domain/feed_entry.dart';
 import '../../features/feed/presentation/driver_home_screen.dart';
+import '../../features/feed/presentation/edit_log_screen.dart';
 import '../../features/fuel/presentation/fuel_form_screen.dart';
 import '../../features/trips/presentation/trip_form_screen.dart';
 
@@ -22,6 +24,7 @@ abstract final class Routes {
   static const tripStart = '/driver/trip/start';
   static String tripEnd(String tripId) => '/driver/trip/$tripId/end';
   static const fuelNew = '/driver/fuel/new';
+  static const editLog = '/driver/edit';
 }
 
 /// The one route each session state is allowed to be on (plus sub-routes,
@@ -68,6 +71,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => TripFormScreen(endTripId: state.pathParameters['id']),
           ),
           GoRoute(path: 'fuel/new', builder: (_, _) => const FuelFormScreen()),
+          GoRoute(
+            path: 'edit',
+            // The entry comes from the feed card; without it there is nothing to edit.
+            redirect: (_, state) => state.extra is FeedEntry ? null : Routes.driver,
+            builder: (_, state) => EditLogScreen(entry: state.extra! as FeedEntry),
+          ),
         ],
       ),
       GoRoute(path: Routes.admin, builder: (_, _) => const AdminHomeScreen()),

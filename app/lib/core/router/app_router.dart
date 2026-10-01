@@ -9,6 +9,7 @@ import '../../features/auth/presentation/location_notice_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/status_screens.dart';
 import '../../features/feed/presentation/driver_home_screen.dart';
+import '../../features/trips/presentation/trip_form_screen.dart';
 
 abstract final class Routes {
   static const splash = '/splash';
@@ -17,6 +18,8 @@ abstract final class Routes {
   static const notice = '/notice';
   static const driver = '/driver';
   static const admin = '/admin';
+  static const tripStart = '/driver/trip/start';
+  static String tripEnd(String tripId) => '/driver/trip/$tripId/end';
 }
 
 /// The one route each session state is allowed to be on (plus sub-routes,
@@ -53,7 +56,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
       GoRoute(path: Routes.blocked, builder: (_, _) => const BlockedScreen()),
       GoRoute(path: Routes.notice, builder: (_, _) => const LocationNoticeScreen()),
-      GoRoute(path: Routes.driver, builder: (_, _) => const DriverHomeScreen()),
+      GoRoute(
+        path: Routes.driver,
+        builder: (_, _) => const DriverHomeScreen(),
+        routes: [
+          GoRoute(path: 'trip/start', builder: (_, _) => const TripFormScreen()),
+          GoRoute(
+            path: 'trip/:id/end',
+            builder: (_, state) => TripFormScreen(endTripId: state.pathParameters['id']),
+          ),
+        ],
+      ),
       GoRoute(path: Routes.admin, builder: (_, _) => const AdminHomeScreen()),
     ],
   );

@@ -4,19 +4,20 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/db/app_database.dart' show SyncState;
 import '../../../core/router/app_router.dart';
+import '../../../core/sync/sync_service.dart';
 import '../../../core/sync/sync_status.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/format.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/session.dart';
 import '../../auth/presentation/sign_out.dart';
-import '../../fuel/data/fuel_repository.dart';
-import '../../fuel/domain/fuel_log.dart';
 import '../../trips/data/trip_repository.dart';
 import '../../trips/domain/trip.dart';
+import '../data/feed_repository.dart';
+import 'feed_card.dart';
 
-/// Driver home: trip controls and this driver's recent trips.
-/// The shared feed of everyone's logs comes in M6.
+/// Driver home: trip and fuel actions on top, then the shared feed of
+/// everyone's logs (like a group chat, without any locations).
 class DriverHomeScreen extends ConsumerWidget {
   const DriverHomeScreen({super.key});
 
@@ -24,10 +25,11 @@ class DriverHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final session = ref.watch(sessionProvider).value;
-    final name = session is SignedIn ? session.user.name : '';
+    final me = session is SignedIn ? session.user : null;
     final openTrip = ref.watch(myOpenTripProvider);
-    final trips = ref.watch(myTripsProvider).value ?? const <Trip>[];
-    final fills = ref.watch(myFillsProvider).value ?? const <FuelLog>[];
+    final feed = ref.watch(feedProvider);
+    final older = ref.watch(olderPagesProvider);
+    final syncs = ref.watch(logSyncProvider).value ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -40,48 +42,65 @@ class DriverHomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('Hi $name', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: t.foreground)),
-          const SizedBox(height: 20),
-          if (openTrip.value == null) const _OthersOpenTrips(),
-          switch (openTrip) {
-            AsyncData(value: final trip?) => _OpenTripCard(trip: trip),
-            AsyncData() => FilledButton.icon(
-                onPressed: () => context.push(Routes.tripStart),
-                icon: const Icon(Icons.play_arrow_rounded, size: 28),
-                label: const Text('Start trip'),
-              ),
-            _ => const SizedBox(height: 56),
-          },
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => context.push(Routes.fuelNew),
-            icon: const Icon(Icons.local_gas_station_rounded, size: 26),
-            label: const Text('Log fuel'),
-          ),
-          const SizedBox(height: 28),
-          Text('My recent fills', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: t.foreground)),
-          const SizedBox(height: 10),
-          if (fills.isEmpty)
-            Text('No fills yet.', style: TextStyle(color: t.mutedForeground, fontSize: 15))
-          else
-            for (final fill in fills.take(5)) ...[
-              _FillTile(fill: fill),
-              const SizedBox(height: 10),
-            ],
-          const SizedBox(height: 28),
-          Text('My recent trips', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: t.foreground)),
-          const SizedBox(height: 10),
-          if (trips.isEmpty)
-            Text('No trips yet.', style: TextStyle(color: t.mutedForeground, fontSize: 15))
-          else
-            for (final trip in trips) ...[
-              _TripTile(trip: trip),
-              const SizedBox(height: 10),
-            ],
-        ],
+      body: RefreshIndicator(
+        // Pulling down retries uploads; the feed itself is live.
+        onRefresh: () => ref.read(syncServiceProvider).kick(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: [
+            Text('Hi ${me?.name ?? ''}', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: t.foreground)),
+            const SizedBox(height: 16),
+            if (openTrip.value == null) const _OthersOpenTrips(),
+            switch (openTrip) {
+              AsyncData(value: final trip?) => _OpenTripCard(trip: trip),
+              AsyncData() => FilledButton.icon(
+                  onPressed: () => context.push(Routes.tripStart),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                  label: const Text('Start trip'),
+                ),
+              _ => const SizedBox(height: 56),
+            },
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push(Routes.fuelNew),
+              icon: const Icon(Icons.local_gas_station_rounded, size: 26),
+              label: const Text('Log fuel'),
+            ),
+            const SizedBox(height: 28),
+            Text('Feed', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: t.foreground)),
+            const SizedBox(height: 10),
+            ...switch (feed) {
+              AsyncData(value: final entries) when entries.isEmpty => [
+                  Text('No logs yet.', style: TextStyle(color: t.mutedForeground, fontSize: 15)),
+                ],
+              AsyncData(value: final entries) => [
+                  for (final e in entries) ...[
+                    FeedCard(
+                      entry: e,
+                      isMine: e.driverId == me?.uid,
+                      // Own logs only, while pending/unreviewed, and not refused by the server.
+                      onEdit: e.driverId == me?.uid && e.editable && syncs[e.id]?.state != SyncState.rejected
+                          ? () => context.push(Routes.editLog, extra: e)
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (!older.done)
+                    OutlinedButton(
+                      onPressed: older.loading ? null : () => ref.read(olderPagesProvider.notifier).loadMore(),
+                      child: Text(older.loading ? 'Loading...' : 'Load older'),
+                    )
+                  else
+                    Center(child: Text('That\'s everything.', style: TextStyle(color: t.mutedForeground))),
+                ],
+              AsyncError() => [
+                  Text('Feed unavailable right now. Your own logs are safe on this phone.',
+                      style: TextStyle(color: t.mutedForeground)),
+                ],
+              _ => [const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))],
+            },
+          ],
+        ),
       ),
     );
   }
@@ -126,127 +145,6 @@ class _OpenTripCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TripTile extends StatelessWidget {
-  const _TripTile({required this.trip});
-
-  final Trip trip;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final km = trip.distanceKm;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.card,
-        borderRadius: BorderRadius.circular(t.radius),
-        border: Border.all(color: t.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trip.isOpen ? 'In progress' : (km == null ? '' : formatKm(km)),
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.cardForeground),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  trip.isOpen
-                      ? 'From ${formatKm(trip.startOdo)}'
-                      : '${formatKm(trip.startOdo)} → ${formatKm(trip.endOdo!)}',
-                  style: TextStyle(fontSize: 14, color: t.mutedForeground),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(formatWhen(trip.startedAt), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
-              const SizedBox(height: 4),
-              _SyncBadge(logId: trip.id),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FillTile extends StatelessWidget {
-  const _FillTile({required this.fill});
-
-  final FuelLog fill;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.card,
-        borderRadius: BorderRadius.circular(t.radius),
-        border: Border.all(color: t.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Rs ${fill.total.toStringAsFixed(0)}  ·  ${fill.liters.toStringAsFixed(2)} L',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.cardForeground),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${formatKm(fill.odometer)}  ·  ${paidByLabels[fill.paidBy]}',
-                  style: TextStyle(fontSize: 14, color: t.mutedForeground),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(formatWhen(fill.capturedAtDevice), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
-              const SizedBox(height: 4),
-              _SyncBadge(logId: fill.id),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Where this log is: waiting, uploading n/m, sending, sent, or not accepted.
-class _SyncBadge extends ConsumerWidget {
-  const _SyncBadge({required this.logId});
-
-  final String logId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
-    final sync = ref.watch(logSyncProvider).value?[logId];
-    final label = sync?.label ?? 'On phone';
-    final (bg, fg) = switch (sync?.state) {
-      SyncState.synced => (t.accent, t.accentForeground),
-      SyncState.rejected => (t.destructive, t.destructiveForeground),
-      _ => (t.muted, t.mutedForeground),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(t.radiusSm)),
-      child: Text(label, style: TextStyle(fontSize: 12, color: fg, fontWeight: FontWeight.w500)),
     );
   }
 }

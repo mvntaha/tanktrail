@@ -20,6 +20,7 @@ import '../../evidence/presentation/video_capture_screen.dart';
 import '../../trips/data/trip_repository.dart';
 import '../data/fuel_repository.dart';
 import '../domain/fuel_log.dart';
+import 'paid_by_button.dart';
 
 /// Log a fuel fill: 3 in-app captures + the pump's numbers. Saved on the
 /// phone only for now (uploading arrives in Milestone 5).
@@ -312,7 +313,7 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
               children: [
                 for (final entry in paidByLabels.entries) ...[
                   Expanded(
-                    child: _PaidByButton(
+                    child: PaidByButton(
                       label: entry.value,
                       selected: _paidBy == entry.key,
                       onTap: _saving ? null : () => setState(() => _paidBy = entry.key),
@@ -339,44 +340,6 @@ class _FuelFormScreenState extends ConsumerState<FuelFormScreen> {
               style: TextStyle(color: t.mutedForeground, fontSize: 13),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PaidByButton extends StatelessWidget {
-  const _PaidByButton({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final radius = BorderRadius.circular(t.radius);
-    return Material(
-      color: selected ? t.primary : t.card,
-      borderRadius: radius,
-      child: InkWell(
-        borderRadius: radius,
-        onTap: onTap,
-        child: Container(
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(color: selected ? t.primary : t.border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: selected ? t.primaryForeground : t.foreground,
-            ),
-          ),
         ),
       ),
     );

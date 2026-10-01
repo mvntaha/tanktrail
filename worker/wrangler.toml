@@ -10,6 +10,6 @@ compatibility_date = "2026-09-01"
 # Tokens must be issued for this Firebase project (dev for now; prod in M9).
 FIREBASE_PROJECT_ID = "tanktrail-dev-e514e"
 # Cloud name is not secret (it is part of every image URL).
-CLOUDINARY_CLOUD_NAME = "SET_ME"
+CLOUDINARY_CLOUD_NAME = "dgm2hjnfx"
 # All files go under this Cloudinary folder.
 FOLDER = "tanktrail-dev"

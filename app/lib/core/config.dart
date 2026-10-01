@@ -4,6 +4,6 @@ abstract final class AppConfig {
   /// Cloudflare Worker that signs Cloudinary uploads (see worker/).
   static const signerUrl = String.fromEnvironment(
     'SIGNER_URL',
-    defaultValue: 'https://tanktrail-signer-dev.SET_ME.workers.dev/sign',
+    defaultValue: 'https://tanktrail-signer-dev.syedamuntahapk.workers.dev/sign',
   );
 }

@@ -29,6 +29,7 @@ class CapturedMedia {
     required this.capturedAtDevice,
     required this.fix,
     this.durationSec,
+    this.ocrText,
   });
 
   final String id;
@@ -42,4 +43,7 @@ class CapturedMedia {
   final DateTime capturedAtDevice;
   final GeoFix fix;
   final int? durationSec;
+
+  /// Raw OCR text from the framed area (photos only). Admin-only soft hint.
+  final String? ocrText;
 }

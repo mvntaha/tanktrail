@@ -12,6 +12,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/session.dart';
 import '../../evidence/domain/captured_media.dart';
 import '../../evidence/presentation/camera_capture_screen.dart';
+import '../../evidence/presentation/evidence_slot.dart';
 import '../../evidence/presentation/location_gate.dart';
 import '../data/trip_repository.dart';
 import '../domain/trip.dart';
@@ -167,7 +168,13 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             ],
             Text('1. Odometer photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.foreground)),
             const SizedBox(height: 10),
-            _PhotoSlot(photo: _photo, onTap: _saving ? null : _takePhoto),
+            EvidenceSlot(
+              label: 'Take odometer photo',
+              icon: Icons.photo_camera_rounded,
+              media: _photo,
+              onCapture: _saving ? null : _takePhoto,
+              height: 160,
+            ),
             const SizedBox(height: 24),
             Text('2. Odometer reading', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.foreground)),
             const SizedBox(height: 10),
@@ -202,68 +209,6 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PhotoSlot extends StatelessWidget {
-  const _PhotoSlot({required this.photo, required this.onTap});
-
-  final CapturedMedia? photo;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final p = photo;
-    final radius = BorderRadius.circular(t.radius);
-
-    if (p == null) {
-      return Material(
-        color: t.accent,
-        borderRadius: radius,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: onTap,
-          child: SizedBox(
-            height: 160,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.photo_camera_rounded, size: 44, color: t.accentForeground),
-                const SizedBox(height: 8),
-                Text('Take odometer photo',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.accentForeground)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ClipRRect(
-          borderRadius: radius,
-          child: AspectRatio(
-            aspectRatio: 4 / 3,
-            child: Image.file(File(p.filePath), fit: BoxFit.cover, cacheWidth: 1080),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.check_circle_rounded, size: 18, color: t.chart[1]),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text('Photo and location saved ${formatTime(p.capturedAtDevice)}',
-                  style: TextStyle(fontSize: 14, color: t.mutedForeground)),
-            ),
-            TextButton.icon(onPressed: onTap, icon: const Icon(Icons.refresh_rounded), label: const Text('Retake')),
-          ],
-        ),
-      ],
     );
   }
 }

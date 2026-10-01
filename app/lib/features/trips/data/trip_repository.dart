@@ -5,6 +5,7 @@ import '../../../core/db/app_database.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/app_user.dart';
 import '../../auth/domain/session.dart';
+import '../../evidence/data/evidence_dao.dart';
 import '../../evidence/domain/captured_media.dart';
 import '../domain/trip.dart';
 
@@ -75,18 +76,8 @@ class TripRepository {
     return q.watchSingleOrNull().map((r) => r == null ? null : _toTrip(r));
   }
 
-  Stream<int?> watchLastOdometer() {
-    final maxStart = _db.localTrips.startOdo.max();
-    final maxEnd = _db.localTrips.endOdo.max();
-    final q = _db.selectOnly(_db.localTrips)..addColumns([maxStart, maxEnd]);
-    return q.watchSingle().map((row) {
-      final a = row.read(maxStart);
-      final b = row.read(maxEnd);
-      if (a == null) return b;
-      if (b == null) return a;
-      return a > b ? a : b;
-    });
-  }
+  /// Across trips AND fuel fills.
+  Stream<int?> watchLastOdometer() => _db.watchLastOdometer();
 
   /// Saves a new open trip and its start photo together.
   Future<void> startTrip({
@@ -132,20 +123,6 @@ class TripRepository {
     });
   }
 
-  Future<void> _insertEvidence(String tripId, String phase, CapturedMedia m) {
-    return _db.into(_db.localEvidence).insert(LocalEvidenceCompanion.insert(
-          id: m.id,
-          logId: tripId,
-          logKind: 'trip',
-          phase: phase,
-          type: m.type,
-          filePath: m.filePath,
-          sha256: m.sha256,
-          capturedAtDevice: m.capturedAtDevice,
-          lat: m.fix.lat,
-          lng: m.fix.lng,
-          acc: m.fix.accuracyM,
-          mock: m.fix.mock,
-        ));
-  }
+  Future<void> _insertEvidence(String tripId, String phase, CapturedMedia m) =>
+      insertEvidence(_db, logId: tripId, logKind: 'trip', phase: phase, media: m);
 }

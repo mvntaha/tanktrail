@@ -8,11 +8,13 @@ import '../../../core/utils/format.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/session.dart';
 import '../../auth/presentation/sign_out.dart';
+import '../../fuel/data/fuel_repository.dart';
+import '../../fuel/domain/fuel_log.dart';
 import '../../trips/data/trip_repository.dart';
 import '../../trips/domain/trip.dart';
 
 /// Driver home: trip controls and this driver's recent trips.
-/// Fuel logging (M4) and the shared feed (M6) come later.
+/// The shared feed of everyone's logs comes in M6.
 class DriverHomeScreen extends ConsumerWidget {
   const DriverHomeScreen({super.key});
 
@@ -23,6 +25,7 @@ class DriverHomeScreen extends ConsumerWidget {
     final name = session is SignedIn ? session.user.name : '';
     final openTrip = ref.watch(myOpenTripProvider);
     final trips = ref.watch(myTripsProvider).value ?? const <Trip>[];
+    final fills = ref.watch(myFillsProvider).value ?? const <FuelLog>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -50,7 +53,21 @@ class DriverHomeScreen extends ConsumerWidget {
             _ => const SizedBox(height: 56),
           },
           const SizedBox(height: 12),
-          const _ComingSoon(icon: Icons.local_gas_station_rounded, title: 'Fuel', subtitle: 'Log a fill'),
+          OutlinedButton.icon(
+            onPressed: () => context.push(Routes.fuelNew),
+            icon: const Icon(Icons.local_gas_station_rounded, size: 26),
+            label: const Text('Log fuel'),
+          ),
+          const SizedBox(height: 28),
+          Text('My recent fills', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: t.foreground)),
+          const SizedBox(height: 10),
+          if (fills.isEmpty)
+            Text('No fills yet.', style: TextStyle(color: t.mutedForeground, fontSize: 15))
+          else
+            for (final fill in fills.take(5)) ...[
+              _FillTile(fill: fill),
+              const SizedBox(height: 10),
+            ],
           const SizedBox(height: 28),
           Text('My recent trips', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: t.foreground)),
           const SizedBox(height: 10),
@@ -151,12 +168,7 @@ class _TripTile extends StatelessWidget {
             children: [
               Text(formatWhen(trip.startedAt), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
               const SizedBox(height: 4),
-              // Nothing uploads yet (M5); be honest about where the data is.
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: t.muted, borderRadius: BorderRadius.circular(t.radiusSm)),
-                child: Text('On phone', style: TextStyle(fontSize: 12, color: t.mutedForeground)),
-              ),
+              const _OnPhoneBadge(),
             ],
           ),
         ],
@@ -165,46 +177,64 @@ class _TripTile extends StatelessWidget {
   }
 }
 
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.icon, required this.title, required this.subtitle});
+class _FillTile extends StatelessWidget {
+  const _FillTile({required this.fill});
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
+  final FuelLog fill;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return DecoratedBox(
+    return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: t.card,
         borderRadius: BorderRadius.circular(t.radius),
         border: Border.all(color: t.border),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(color: t.secondary, borderRadius: BorderRadius.circular(t.radiusSm)),
-              child: Icon(icon, color: t.secondaryForeground, size: 26),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Rs ${fill.total.toStringAsFixed(0)}  ·  ${fill.liters.toStringAsFixed(2)} L',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.cardForeground),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatKm(fill.odometer)}  ·  ${paidByLabels[fill.paidBy]}',
+                  style: TextStyle(fontSize: 14, color: t.mutedForeground),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: t.cardForeground)),
-                  Text(subtitle, style: TextStyle(fontSize: 14, color: t.mutedForeground)),
-                ],
-              ),
-            ),
-            Text('Soon', style: TextStyle(fontSize: 13, color: t.mutedForeground)),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(formatWhen(fill.capturedAtDevice), style: TextStyle(fontSize: 13, color: t.mutedForeground)),
+              const SizedBox(height: 4),
+              const _OnPhoneBadge(),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+}
+
+/// Nothing uploads yet (M5); be honest about where the data is.
+class _OnPhoneBadge extends StatelessWidget {
+  const _OnPhoneBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: t.muted, borderRadius: BorderRadius.circular(t.radiusSm)),
+      child: Text('On phone', style: TextStyle(fontSize: 12, color: t.mutedForeground)),
     );
   }
 }

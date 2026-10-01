@@ -42,6 +42,26 @@ class MediaStore {
     return (path: out.path, sha256: await sha256OfFile(out.path));
   }
 
+  /// Moves a recorded video into evidence storage. Videos are already recorded
+  /// small (720p, 15 fps, ~1.5 Mbps, no audio) and CameraX writes no GPS into
+  /// them, so no re-encoding is needed. Returns the stored file and its SHA-256.
+  Future<({String path, String sha256})> storeVideo({
+    required String sourcePath,
+    required String logId,
+    required String mediaId,
+  }) async {
+    final dir = await _dirFor(logId);
+    final target = '${dir.path}/$mediaId.mp4';
+    // copy + delete: rename fails if cache and documents are on different mounts.
+    await File(sourcePath).copy(target);
+    try {
+      await File(sourcePath).delete();
+    } on FileSystemException {
+      // Temp file only.
+    }
+    return (path: target, sha256: await sha256OfFile(target));
+  }
+
   /// Streams the file through the hash so large videos (M4) don't fill memory.
   static Future<String> sha256OfFile(String path) async {
     final digest = await sha256.bind(File(path).openRead()).first;

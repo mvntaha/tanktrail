@@ -9,6 +9,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/ids.dart';
 import '../data/location_service.dart';
 import '../data/media_store.dart';
+import '../data/ocr_service.dart';
 import '../domain/captured_media.dart';
 
 /// In-app camera for one evidence photo (no gallery picker, by design).
@@ -20,7 +21,13 @@ class CameraCaptureScreen extends ConsumerStatefulWidget {
     required this.logId,
     required this.type,
     required this.hint,
+    this.guide = odometerGuide,
   });
+
+  /// Framing boxes (left, top, right, bottom as fractions of the preview).
+  /// The same box is cropped for OCR.
+  static const odometerGuide = [0.075, 0.375, 0.925, 0.625];
+  static const pumpGuide = [0.075, 0.25, 0.925, 0.75];
 
   final String logId;
 
@@ -29,6 +36,8 @@ class CameraCaptureScreen extends ConsumerStatefulWidget {
 
   /// Reminder shown over the preview, e.g. "Show ODO (total km), not TRIP".
   final String hint;
+
+  final List<double> guide;
 
   @override
   ConsumerState<CameraCaptureScreen> createState() => _CameraCaptureScreenState();
@@ -150,6 +159,8 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
             mediaId: mediaId,
           );
 
+      // OCR runs while GPS is still searching, so it adds no waiting.
+      final ocrText = await ref.read(ocrServiceProvider).read(stored.path, widget.guide);
       var fix = await fixFuture;
       while (fix == null) {
         if (!mounted) return;
@@ -171,6 +182,7 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
           sha256: stored.sha256,
           capturedAtDevice: capturedAt,
           fix: fix,
+          ocrText: ocrText,
         ),
       );
     } catch (e) {
@@ -244,7 +256,7 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
                                   fit: StackFit.expand,
                                   children: [
                                     CameraPreview(c),
-                                    _FramingGuide(color: t.background),
+                                    _FramingGuide(color: t.background, box: widget.guide),
                                     if (_focusAt != null)
                                       Positioned(
                                         left: _focusAt!.dx - 32,
@@ -316,24 +328,33 @@ class _CameraCaptureScreenState extends ConsumerState<CameraCaptureScreen> with 
 
 /// Wide box in the middle: where the odometer/pump display should sit.
 class _FramingGuide extends StatelessWidget {
-  const _FramingGuide({required this.color});
+  const _FramingGuide({required this.color, required this.box});
 
   final Color color;
+
+  /// left, top, right, bottom as fractions of the preview.
+  final List<double> box;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     return IgnorePointer(
-      child: Center(
-        child: FractionallySizedBox(
-          widthFactor: 0.85,
-          heightFactor: 0.25,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: color, width: 2.5),
-              borderRadius: BorderRadius.circular(t.radiusSm),
+      child: LayoutBuilder(
+        builder: (context, c) => Stack(
+          children: [
+            Positioned(
+              left: box[0] * c.maxWidth,
+              top: box[1] * c.maxHeight,
+              width: (box[2] - box[0]) * c.maxWidth,
+              height: (box[3] - box[1]) * c.maxHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: color, width: 2.5),
+                  borderRadius: BorderRadius.circular(t.radiusSm),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -26,9 +26,14 @@ dependencies:
   drift_flutter: 0.3.1
   crypto: 3.0.7
   flutter_image_compress: 2.5.1
+  google_mlkit_text_recognition: 0.17.1
+  image: 4.10.1
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  # On-phone tests (e.g. the OCR sample test): flutter test integration_test/...
+  integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   drift_dev: 2.35.1

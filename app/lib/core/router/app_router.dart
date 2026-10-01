@@ -9,6 +9,7 @@ import '../../features/auth/presentation/location_notice_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/status_screens.dart';
 import '../../features/feed/presentation/driver_home_screen.dart';
+import '../../features/fuel/presentation/fuel_form_screen.dart';
 import '../../features/trips/presentation/trip_form_screen.dart';
 
 abstract final class Routes {
@@ -20,6 +21,7 @@ abstract final class Routes {
   static const admin = '/admin';
   static const tripStart = '/driver/trip/start';
   static String tripEnd(String tripId) => '/driver/trip/$tripId/end';
+  static const fuelNew = '/driver/fuel/new';
 }
 
 /// The one route each session state is allowed to be on (plus sub-routes,
@@ -65,6 +67,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'trip/:id/end',
             builder: (_, state) => TripFormScreen(endTripId: state.pathParameters['id']),
           ),
+          GoRoute(path: 'fuel/new', builder: (_, _) => const FuelFormScreen()),
         ],
       ),
       GoRoute(path: Routes.admin, builder: (_, _) => const AdminHomeScreen()),

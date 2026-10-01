@@ -1040,6 +1040,17 @@ class $LocalEvidenceTable extends LocalEvidence
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _ocrTextMeta = const VerificationMeta(
+    'ocrText',
+  );
+  @override
+  late final GeneratedColumn<String> ocrText = GeneratedColumn<String>(
+    'ocr_text',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1055,6 +1066,7 @@ class $LocalEvidenceTable extends LocalEvidence
     acc,
     mock,
     durationSec,
+    ocrText,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1173,6 +1185,12 @@ class $LocalEvidenceTable extends LocalEvidence
         ),
       );
     }
+    if (data.containsKey('ocr_text')) {
+      context.handle(
+        _ocrTextMeta,
+        ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta),
+      );
+    }
     return context;
   }
 
@@ -1234,6 +1252,10 @@ class $LocalEvidenceTable extends LocalEvidence
         DriftSqlType.int,
         data['${effectivePrefix}duration_sec'],
       ),
+      ocrText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_text'],
+      ),
     );
   }
 
@@ -1268,6 +1290,10 @@ class LocalEvidenceData extends DataClass
   final double acc;
   final bool mock;
   final int? durationSec;
+
+  /// What on-device OCR read from the photo (raw text), for an admin-only
+  /// soft hint. Null for videos or when OCR found nothing. (Added in schema v2.)
+  final String? ocrText;
   const LocalEvidenceData({
     required this.id,
     required this.logId,
@@ -1282,6 +1308,7 @@ class LocalEvidenceData extends DataClass
     required this.acc,
     required this.mock,
     this.durationSec,
+    this.ocrText,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1300,6 +1327,9 @@ class LocalEvidenceData extends DataClass
     map['mock'] = Variable<bool>(mock);
     if (!nullToAbsent || durationSec != null) {
       map['duration_sec'] = Variable<int>(durationSec);
+    }
+    if (!nullToAbsent || ocrText != null) {
+      map['ocr_text'] = Variable<String>(ocrText);
     }
     return map;
   }
@@ -1321,6 +1351,9 @@ class LocalEvidenceData extends DataClass
       durationSec: durationSec == null && nullToAbsent
           ? const Value.absent()
           : Value(durationSec),
+      ocrText: ocrText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrText),
     );
   }
 
@@ -1343,6 +1376,7 @@ class LocalEvidenceData extends DataClass
       acc: serializer.fromJson<double>(json['acc']),
       mock: serializer.fromJson<bool>(json['mock']),
       durationSec: serializer.fromJson<int?>(json['durationSec']),
+      ocrText: serializer.fromJson<String?>(json['ocrText']),
     );
   }
   @override
@@ -1362,6 +1396,7 @@ class LocalEvidenceData extends DataClass
       'acc': serializer.toJson<double>(acc),
       'mock': serializer.toJson<bool>(mock),
       'durationSec': serializer.toJson<int?>(durationSec),
+      'ocrText': serializer.toJson<String?>(ocrText),
     };
   }
 
@@ -1379,6 +1414,7 @@ class LocalEvidenceData extends DataClass
     double? acc,
     bool? mock,
     Value<int?> durationSec = const Value.absent(),
+    Value<String?> ocrText = const Value.absent(),
   }) => LocalEvidenceData(
     id: id ?? this.id,
     logId: logId ?? this.logId,
@@ -1393,6 +1429,7 @@ class LocalEvidenceData extends DataClass
     acc: acc ?? this.acc,
     mock: mock ?? this.mock,
     durationSec: durationSec.present ? durationSec.value : this.durationSec,
+    ocrText: ocrText.present ? ocrText.value : this.ocrText,
   );
   LocalEvidenceData copyWithCompanion(LocalEvidenceCompanion data) {
     return LocalEvidenceData(
@@ -1413,6 +1450,7 @@ class LocalEvidenceData extends DataClass
       durationSec: data.durationSec.present
           ? data.durationSec.value
           : this.durationSec,
+      ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
     );
   }
 
@@ -1431,7 +1469,8 @@ class LocalEvidenceData extends DataClass
           ..write('lng: $lng, ')
           ..write('acc: $acc, ')
           ..write('mock: $mock, ')
-          ..write('durationSec: $durationSec')
+          ..write('durationSec: $durationSec, ')
+          ..write('ocrText: $ocrText')
           ..write(')'))
         .toString();
   }
@@ -1451,6 +1490,7 @@ class LocalEvidenceData extends DataClass
     acc,
     mock,
     durationSec,
+    ocrText,
   );
   @override
   bool operator ==(Object other) =>
@@ -1468,7 +1508,8 @@ class LocalEvidenceData extends DataClass
           other.lng == this.lng &&
           other.acc == this.acc &&
           other.mock == this.mock &&
-          other.durationSec == this.durationSec);
+          other.durationSec == this.durationSec &&
+          other.ocrText == this.ocrText);
 }
 
 class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
@@ -1485,6 +1526,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
   final Value<double> acc;
   final Value<bool> mock;
   final Value<int?> durationSec;
+  final Value<String?> ocrText;
   final Value<int> rowid;
   const LocalEvidenceCompanion({
     this.id = const Value.absent(),
@@ -1500,6 +1542,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     this.acc = const Value.absent(),
     this.mock = const Value.absent(),
     this.durationSec = const Value.absent(),
+    this.ocrText = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalEvidenceCompanion.insert({
@@ -1516,6 +1559,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     required double acc,
     required bool mock,
     this.durationSec = const Value.absent(),
+    this.ocrText = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        logId = Value(logId),
@@ -1543,6 +1587,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     Expression<double>? acc,
     Expression<bool>? mock,
     Expression<int>? durationSec,
+    Expression<String>? ocrText,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1559,6 +1604,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
       if (acc != null) 'acc': acc,
       if (mock != null) 'mock': mock,
       if (durationSec != null) 'duration_sec': durationSec,
+      if (ocrText != null) 'ocr_text': ocrText,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1577,6 +1623,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     Value<double>? acc,
     Value<bool>? mock,
     Value<int?>? durationSec,
+    Value<String?>? ocrText,
     Value<int>? rowid,
   }) {
     return LocalEvidenceCompanion(
@@ -1593,6 +1640,7 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
       acc: acc ?? this.acc,
       mock: mock ?? this.mock,
       durationSec: durationSec ?? this.durationSec,
+      ocrText: ocrText ?? this.ocrText,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1639,6 +1687,9 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
     if (durationSec.present) {
       map['duration_sec'] = Variable<int>(durationSec.value);
     }
+    if (ocrText.present) {
+      map['ocr_text'] = Variable<String>(ocrText.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1661,6 +1712,858 @@ class LocalEvidenceCompanion extends UpdateCompanion<LocalEvidenceData> {
           ..write('acc: $acc, ')
           ..write('mock: $mock, ')
           ..write('durationSec: $durationSec, ')
+          ..write('ocrText: $ocrText, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalFuelLogsTable extends LocalFuelLogs
+    with TableInfo<$LocalFuelLogsTable, LocalFuelLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalFuelLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdMeta = const VerificationMeta(
+    'driverId',
+  );
+  @override
+  late final GeneratedColumn<String> driverId = GeneratedColumn<String>(
+    'driver_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverNameMeta = const VerificationMeta(
+    'driverName',
+  );
+  @override
+  late final GeneratedColumn<String> driverName = GeneratedColumn<String>(
+    'driver_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _odometerMeta = const VerificationMeta(
+    'odometer',
+  );
+  @override
+  late final GeneratedColumn<int> odometer = GeneratedColumn<int>(
+    'odometer',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _litersMeta = const VerificationMeta('liters');
+  @override
+  late final GeneratedColumn<double> liters = GeneratedColumn<double>(
+    'liters',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pricePerLMeta = const VerificationMeta(
+    'pricePerL',
+  );
+  @override
+  late final GeneratedColumn<double> pricePerL = GeneratedColumn<double>(
+    'price_per_l',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<double> total = GeneratedColumn<double>(
+    'total',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fuelTypeMeta = const VerificationMeta(
+    'fuelType',
+  );
+  @override
+  late final GeneratedColumn<String> fuelType = GeneratedColumn<String>(
+    'fuel_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paidByMeta = const VerificationMeta('paidBy');
+  @override
+  late final GeneratedColumn<String> paidBy = GeneratedColumn<String>(
+    'paid_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _capturedAtDeviceMeta = const VerificationMeta(
+    'capturedAtDevice',
+  );
+  @override
+  late final GeneratedColumn<DateTime> capturedAtDevice =
+      GeneratedColumn<DateTime>(
+        'captured_at_device',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _latMeta = const VerificationMeta('lat');
+  @override
+  late final GeneratedColumn<double> lat = GeneratedColumn<double>(
+    'lat',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lngMeta = const VerificationMeta('lng');
+  @override
+  late final GeneratedColumn<double> lng = GeneratedColumn<double>(
+    'lng',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accMeta = const VerificationMeta('acc');
+  @override
+  late final GeneratedColumn<double> acc = GeneratedColumn<double>(
+    'acc',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mockMeta = const VerificationMeta('mock');
+  @override
+  late final GeneratedColumn<bool> mock = GeneratedColumn<bool>(
+    'mock',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("mock" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    driverId,
+    driverName,
+    odometer,
+    liters,
+    pricePerL,
+    total,
+    fuelType,
+    paidBy,
+    capturedAtDevice,
+    lat,
+    lng,
+    acc,
+    mock,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_fuel_logs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalFuelLog> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('driver_id')) {
+      context.handle(
+        _driverIdMeta,
+        driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_driverIdMeta);
+    }
+    if (data.containsKey('driver_name')) {
+      context.handle(
+        _driverNameMeta,
+        driverName.isAcceptableOrUnknown(data['driver_name']!, _driverNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_driverNameMeta);
+    }
+    if (data.containsKey('odometer')) {
+      context.handle(
+        _odometerMeta,
+        odometer.isAcceptableOrUnknown(data['odometer']!, _odometerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_odometerMeta);
+    }
+    if (data.containsKey('liters')) {
+      context.handle(
+        _litersMeta,
+        liters.isAcceptableOrUnknown(data['liters']!, _litersMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_litersMeta);
+    }
+    if (data.containsKey('price_per_l')) {
+      context.handle(
+        _pricePerLMeta,
+        pricePerL.isAcceptableOrUnknown(data['price_per_l']!, _pricePerLMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pricePerLMeta);
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+        _totalMeta,
+        total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalMeta);
+    }
+    if (data.containsKey('fuel_type')) {
+      context.handle(
+        _fuelTypeMeta,
+        fuelType.isAcceptableOrUnknown(data['fuel_type']!, _fuelTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fuelTypeMeta);
+    }
+    if (data.containsKey('paid_by')) {
+      context.handle(
+        _paidByMeta,
+        paidBy.isAcceptableOrUnknown(data['paid_by']!, _paidByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_paidByMeta);
+    }
+    if (data.containsKey('captured_at_device')) {
+      context.handle(
+        _capturedAtDeviceMeta,
+        capturedAtDevice.isAcceptableOrUnknown(
+          data['captured_at_device']!,
+          _capturedAtDeviceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_capturedAtDeviceMeta);
+    }
+    if (data.containsKey('lat')) {
+      context.handle(
+        _latMeta,
+        lat.isAcceptableOrUnknown(data['lat']!, _latMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_latMeta);
+    }
+    if (data.containsKey('lng')) {
+      context.handle(
+        _lngMeta,
+        lng.isAcceptableOrUnknown(data['lng']!, _lngMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lngMeta);
+    }
+    if (data.containsKey('acc')) {
+      context.handle(
+        _accMeta,
+        acc.isAcceptableOrUnknown(data['acc']!, _accMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accMeta);
+    }
+    if (data.containsKey('mock')) {
+      context.handle(
+        _mockMeta,
+        mock.isAcceptableOrUnknown(data['mock']!, _mockMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mockMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalFuelLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalFuelLog(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      driverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_id'],
+      )!,
+      driverName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_name'],
+      )!,
+      odometer: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}odometer'],
+      )!,
+      liters: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}liters'],
+      )!,
+      pricePerL: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}price_per_l'],
+      )!,
+      total: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total'],
+      )!,
+      fuelType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fuel_type'],
+      )!,
+      paidBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}paid_by'],
+      )!,
+      capturedAtDevice: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}captured_at_device'],
+      )!,
+      lat: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}lat'],
+      )!,
+      lng: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}lng'],
+      )!,
+      acc: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}acc'],
+      )!,
+      mock: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}mock'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalFuelLogsTable createAlias(String alias) {
+    return $LocalFuelLogsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalFuelLog extends DataClass implements Insertable<LocalFuelLog> {
+  final String id;
+  final String driverId;
+  final String driverName;
+  final int odometer;
+  final double liters;
+  final double pricePerL;
+  final double total;
+
+  /// petrol | diesel | cng | other
+  final String fuelType;
+
+  /// company_cash | own
+  final String paidBy;
+
+  /// Phone clock when the driver saved the fill.
+  final DateTime capturedAtDevice;
+
+  /// Fill location = the GPS fix taken with the pump photo (at the pump).
+  final double lat;
+  final double lng;
+  final double acc;
+  final bool mock;
+
+  /// Mirrors the server status once synced; 'pending' until the admin reviews.
+  final String status;
+  const LocalFuelLog({
+    required this.id,
+    required this.driverId,
+    required this.driverName,
+    required this.odometer,
+    required this.liters,
+    required this.pricePerL,
+    required this.total,
+    required this.fuelType,
+    required this.paidBy,
+    required this.capturedAtDevice,
+    required this.lat,
+    required this.lng,
+    required this.acc,
+    required this.mock,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['driver_id'] = Variable<String>(driverId);
+    map['driver_name'] = Variable<String>(driverName);
+    map['odometer'] = Variable<int>(odometer);
+    map['liters'] = Variable<double>(liters);
+    map['price_per_l'] = Variable<double>(pricePerL);
+    map['total'] = Variable<double>(total);
+    map['fuel_type'] = Variable<String>(fuelType);
+    map['paid_by'] = Variable<String>(paidBy);
+    map['captured_at_device'] = Variable<DateTime>(capturedAtDevice);
+    map['lat'] = Variable<double>(lat);
+    map['lng'] = Variable<double>(lng);
+    map['acc'] = Variable<double>(acc);
+    map['mock'] = Variable<bool>(mock);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  LocalFuelLogsCompanion toCompanion(bool nullToAbsent) {
+    return LocalFuelLogsCompanion(
+      id: Value(id),
+      driverId: Value(driverId),
+      driverName: Value(driverName),
+      odometer: Value(odometer),
+      liters: Value(liters),
+      pricePerL: Value(pricePerL),
+      total: Value(total),
+      fuelType: Value(fuelType),
+      paidBy: Value(paidBy),
+      capturedAtDevice: Value(capturedAtDevice),
+      lat: Value(lat),
+      lng: Value(lng),
+      acc: Value(acc),
+      mock: Value(mock),
+      status: Value(status),
+    );
+  }
+
+  factory LocalFuelLog.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalFuelLog(
+      id: serializer.fromJson<String>(json['id']),
+      driverId: serializer.fromJson<String>(json['driverId']),
+      driverName: serializer.fromJson<String>(json['driverName']),
+      odometer: serializer.fromJson<int>(json['odometer']),
+      liters: serializer.fromJson<double>(json['liters']),
+      pricePerL: serializer.fromJson<double>(json['pricePerL']),
+      total: serializer.fromJson<double>(json['total']),
+      fuelType: serializer.fromJson<String>(json['fuelType']),
+      paidBy: serializer.fromJson<String>(json['paidBy']),
+      capturedAtDevice: serializer.fromJson<DateTime>(json['capturedAtDevice']),
+      lat: serializer.fromJson<double>(json['lat']),
+      lng: serializer.fromJson<double>(json['lng']),
+      acc: serializer.fromJson<double>(json['acc']),
+      mock: serializer.fromJson<bool>(json['mock']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'driverId': serializer.toJson<String>(driverId),
+      'driverName': serializer.toJson<String>(driverName),
+      'odometer': serializer.toJson<int>(odometer),
+      'liters': serializer.toJson<double>(liters),
+      'pricePerL': serializer.toJson<double>(pricePerL),
+      'total': serializer.toJson<double>(total),
+      'fuelType': serializer.toJson<String>(fuelType),
+      'paidBy': serializer.toJson<String>(paidBy),
+      'capturedAtDevice': serializer.toJson<DateTime>(capturedAtDevice),
+      'lat': serializer.toJson<double>(lat),
+      'lng': serializer.toJson<double>(lng),
+      'acc': serializer.toJson<double>(acc),
+      'mock': serializer.toJson<bool>(mock),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  LocalFuelLog copyWith({
+    String? id,
+    String? driverId,
+    String? driverName,
+    int? odometer,
+    double? liters,
+    double? pricePerL,
+    double? total,
+    String? fuelType,
+    String? paidBy,
+    DateTime? capturedAtDevice,
+    double? lat,
+    double? lng,
+    double? acc,
+    bool? mock,
+    String? status,
+  }) => LocalFuelLog(
+    id: id ?? this.id,
+    driverId: driverId ?? this.driverId,
+    driverName: driverName ?? this.driverName,
+    odometer: odometer ?? this.odometer,
+    liters: liters ?? this.liters,
+    pricePerL: pricePerL ?? this.pricePerL,
+    total: total ?? this.total,
+    fuelType: fuelType ?? this.fuelType,
+    paidBy: paidBy ?? this.paidBy,
+    capturedAtDevice: capturedAtDevice ?? this.capturedAtDevice,
+    lat: lat ?? this.lat,
+    lng: lng ?? this.lng,
+    acc: acc ?? this.acc,
+    mock: mock ?? this.mock,
+    status: status ?? this.status,
+  );
+  LocalFuelLog copyWithCompanion(LocalFuelLogsCompanion data) {
+    return LocalFuelLog(
+      id: data.id.present ? data.id.value : this.id,
+      driverId: data.driverId.present ? data.driverId.value : this.driverId,
+      driverName: data.driverName.present
+          ? data.driverName.value
+          : this.driverName,
+      odometer: data.odometer.present ? data.odometer.value : this.odometer,
+      liters: data.liters.present ? data.liters.value : this.liters,
+      pricePerL: data.pricePerL.present ? data.pricePerL.value : this.pricePerL,
+      total: data.total.present ? data.total.value : this.total,
+      fuelType: data.fuelType.present ? data.fuelType.value : this.fuelType,
+      paidBy: data.paidBy.present ? data.paidBy.value : this.paidBy,
+      capturedAtDevice: data.capturedAtDevice.present
+          ? data.capturedAtDevice.value
+          : this.capturedAtDevice,
+      lat: data.lat.present ? data.lat.value : this.lat,
+      lng: data.lng.present ? data.lng.value : this.lng,
+      acc: data.acc.present ? data.acc.value : this.acc,
+      mock: data.mock.present ? data.mock.value : this.mock,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFuelLog(')
+          ..write('id: $id, ')
+          ..write('driverId: $driverId, ')
+          ..write('driverName: $driverName, ')
+          ..write('odometer: $odometer, ')
+          ..write('liters: $liters, ')
+          ..write('pricePerL: $pricePerL, ')
+          ..write('total: $total, ')
+          ..write('fuelType: $fuelType, ')
+          ..write('paidBy: $paidBy, ')
+          ..write('capturedAtDevice: $capturedAtDevice, ')
+          ..write('lat: $lat, ')
+          ..write('lng: $lng, ')
+          ..write('acc: $acc, ')
+          ..write('mock: $mock, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    driverId,
+    driverName,
+    odometer,
+    liters,
+    pricePerL,
+    total,
+    fuelType,
+    paidBy,
+    capturedAtDevice,
+    lat,
+    lng,
+    acc,
+    mock,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalFuelLog &&
+          other.id == this.id &&
+          other.driverId == this.driverId &&
+          other.driverName == this.driverName &&
+          other.odometer == this.odometer &&
+          other.liters == this.liters &&
+          other.pricePerL == this.pricePerL &&
+          other.total == this.total &&
+          other.fuelType == this.fuelType &&
+          other.paidBy == this.paidBy &&
+          other.capturedAtDevice == this.capturedAtDevice &&
+          other.lat == this.lat &&
+          other.lng == this.lng &&
+          other.acc == this.acc &&
+          other.mock == this.mock &&
+          other.status == this.status);
+}
+
+class LocalFuelLogsCompanion extends UpdateCompanion<LocalFuelLog> {
+  final Value<String> id;
+  final Value<String> driverId;
+  final Value<String> driverName;
+  final Value<int> odometer;
+  final Value<double> liters;
+  final Value<double> pricePerL;
+  final Value<double> total;
+  final Value<String> fuelType;
+  final Value<String> paidBy;
+  final Value<DateTime> capturedAtDevice;
+  final Value<double> lat;
+  final Value<double> lng;
+  final Value<double> acc;
+  final Value<bool> mock;
+  final Value<String> status;
+  final Value<int> rowid;
+  const LocalFuelLogsCompanion({
+    this.id = const Value.absent(),
+    this.driverId = const Value.absent(),
+    this.driverName = const Value.absent(),
+    this.odometer = const Value.absent(),
+    this.liters = const Value.absent(),
+    this.pricePerL = const Value.absent(),
+    this.total = const Value.absent(),
+    this.fuelType = const Value.absent(),
+    this.paidBy = const Value.absent(),
+    this.capturedAtDevice = const Value.absent(),
+    this.lat = const Value.absent(),
+    this.lng = const Value.absent(),
+    this.acc = const Value.absent(),
+    this.mock = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalFuelLogsCompanion.insert({
+    required String id,
+    required String driverId,
+    required String driverName,
+    required int odometer,
+    required double liters,
+    required double pricePerL,
+    required double total,
+    required String fuelType,
+    required String paidBy,
+    required DateTime capturedAtDevice,
+    required double lat,
+    required double lng,
+    required double acc,
+    required bool mock,
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       driverId = Value(driverId),
+       driverName = Value(driverName),
+       odometer = Value(odometer),
+       liters = Value(liters),
+       pricePerL = Value(pricePerL),
+       total = Value(total),
+       fuelType = Value(fuelType),
+       paidBy = Value(paidBy),
+       capturedAtDevice = Value(capturedAtDevice),
+       lat = Value(lat),
+       lng = Value(lng),
+       acc = Value(acc),
+       mock = Value(mock);
+  static Insertable<LocalFuelLog> custom({
+    Expression<String>? id,
+    Expression<String>? driverId,
+    Expression<String>? driverName,
+    Expression<int>? odometer,
+    Expression<double>? liters,
+    Expression<double>? pricePerL,
+    Expression<double>? total,
+    Expression<String>? fuelType,
+    Expression<String>? paidBy,
+    Expression<DateTime>? capturedAtDevice,
+    Expression<double>? lat,
+    Expression<double>? lng,
+    Expression<double>? acc,
+    Expression<bool>? mock,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (driverId != null) 'driver_id': driverId,
+      if (driverName != null) 'driver_name': driverName,
+      if (odometer != null) 'odometer': odometer,
+      if (liters != null) 'liters': liters,
+      if (pricePerL != null) 'price_per_l': pricePerL,
+      if (total != null) 'total': total,
+      if (fuelType != null) 'fuel_type': fuelType,
+      if (paidBy != null) 'paid_by': paidBy,
+      if (capturedAtDevice != null) 'captured_at_device': capturedAtDevice,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      if (acc != null) 'acc': acc,
+      if (mock != null) 'mock': mock,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalFuelLogsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? driverId,
+    Value<String>? driverName,
+    Value<int>? odometer,
+    Value<double>? liters,
+    Value<double>? pricePerL,
+    Value<double>? total,
+    Value<String>? fuelType,
+    Value<String>? paidBy,
+    Value<DateTime>? capturedAtDevice,
+    Value<double>? lat,
+    Value<double>? lng,
+    Value<double>? acc,
+    Value<bool>? mock,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return LocalFuelLogsCompanion(
+      id: id ?? this.id,
+      driverId: driverId ?? this.driverId,
+      driverName: driverName ?? this.driverName,
+      odometer: odometer ?? this.odometer,
+      liters: liters ?? this.liters,
+      pricePerL: pricePerL ?? this.pricePerL,
+      total: total ?? this.total,
+      fuelType: fuelType ?? this.fuelType,
+      paidBy: paidBy ?? this.paidBy,
+      capturedAtDevice: capturedAtDevice ?? this.capturedAtDevice,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      acc: acc ?? this.acc,
+      mock: mock ?? this.mock,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (driverId.present) {
+      map['driver_id'] = Variable<String>(driverId.value);
+    }
+    if (driverName.present) {
+      map['driver_name'] = Variable<String>(driverName.value);
+    }
+    if (odometer.present) {
+      map['odometer'] = Variable<int>(odometer.value);
+    }
+    if (liters.present) {
+      map['liters'] = Variable<double>(liters.value);
+    }
+    if (pricePerL.present) {
+      map['price_per_l'] = Variable<double>(pricePerL.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<double>(total.value);
+    }
+    if (fuelType.present) {
+      map['fuel_type'] = Variable<String>(fuelType.value);
+    }
+    if (paidBy.present) {
+      map['paid_by'] = Variable<String>(paidBy.value);
+    }
+    if (capturedAtDevice.present) {
+      map['captured_at_device'] = Variable<DateTime>(capturedAtDevice.value);
+    }
+    if (lat.present) {
+      map['lat'] = Variable<double>(lat.value);
+    }
+    if (lng.present) {
+      map['lng'] = Variable<double>(lng.value);
+    }
+    if (acc.present) {
+      map['acc'] = Variable<double>(acc.value);
+    }
+    if (mock.present) {
+      map['mock'] = Variable<bool>(mock.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFuelLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('driverId: $driverId, ')
+          ..write('driverName: $driverName, ')
+          ..write('odometer: $odometer, ')
+          ..write('liters: $liters, ')
+          ..write('pricePerL: $pricePerL, ')
+          ..write('total: $total, ')
+          ..write('fuelType: $fuelType, ')
+          ..write('paidBy: $paidBy, ')
+          ..write('capturedAtDevice: $capturedAtDevice, ')
+          ..write('lat: $lat, ')
+          ..write('lng: $lng, ')
+          ..write('acc: $acc, ')
+          ..write('mock: $mock, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1672,6 +2575,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $LocalTripsTable localTrips = $LocalTripsTable(this);
   late final $LocalEvidenceTable localEvidence = $LocalEvidenceTable(this);
+  late final $LocalFuelLogsTable localFuelLogs = $LocalFuelLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1679,6 +2583,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     localTrips,
     localEvidence,
+    localFuelLogs,
   ];
 }
 
@@ -2112,6 +3017,7 @@ typedef $$LocalEvidenceTableCreateCompanionBuilder =
       required double acc,
       required bool mock,
       Value<int?> durationSec,
+      Value<String?> ocrText,
       Value<int> rowid,
     });
 typedef $$LocalEvidenceTableUpdateCompanionBuilder =
@@ -2129,6 +3035,7 @@ typedef $$LocalEvidenceTableUpdateCompanionBuilder =
       Value<double> acc,
       Value<bool> mock,
       Value<int?> durationSec,
+      Value<String?> ocrText,
       Value<int> rowid,
     });
 
@@ -2203,6 +3110,11 @@ class $$LocalEvidenceTableFilterComposer
 
   ColumnFilters<int> get durationSec => $composableBuilder(
     column: $table.durationSec,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2280,6 +3192,11 @@ class $$LocalEvidenceTableOrderingComposer
     column: $table.durationSec,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LocalEvidenceTableAnnotationComposer
@@ -2333,6 +3250,9 @@ class $$LocalEvidenceTableAnnotationComposer
     column: $table.durationSec,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get ocrText =>
+      $composableBuilder(column: $table.ocrText, builder: (column) => column);
 }
 
 class $$LocalEvidenceTableTableManager
@@ -2383,6 +3303,7 @@ class $$LocalEvidenceTableTableManager
                 Value<double> acc = const Value.absent(),
                 Value<bool> mock = const Value.absent(),
                 Value<int?> durationSec = const Value.absent(),
+                Value<String?> ocrText = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalEvidenceCompanion(
                 id: id,
@@ -2398,6 +3319,7 @@ class $$LocalEvidenceTableTableManager
                 acc: acc,
                 mock: mock,
                 durationSec: durationSec,
+                ocrText: ocrText,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2415,6 +3337,7 @@ class $$LocalEvidenceTableTableManager
                 required double acc,
                 required bool mock,
                 Value<int?> durationSec = const Value.absent(),
+                Value<String?> ocrText = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalEvidenceCompanion.insert(
                 id: id,
@@ -2430,6 +3353,7 @@ class $$LocalEvidenceTableTableManager
                 acc: acc,
                 mock: mock,
                 durationSec: durationSec,
+                ocrText: ocrText,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2466,6 +3390,409 @@ typedef $$LocalEvidenceTableProcessedTableManager =
       LocalEvidenceData,
       PrefetchHooks Function()
     >;
+typedef $$LocalFuelLogsTableCreateCompanionBuilder =
+    LocalFuelLogsCompanion Function({
+      required String id,
+      required String driverId,
+      required String driverName,
+      required int odometer,
+      required double liters,
+      required double pricePerL,
+      required double total,
+      required String fuelType,
+      required String paidBy,
+      required DateTime capturedAtDevice,
+      required double lat,
+      required double lng,
+      required double acc,
+      required bool mock,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$LocalFuelLogsTableUpdateCompanionBuilder =
+    LocalFuelLogsCompanion Function({
+      Value<String> id,
+      Value<String> driverId,
+      Value<String> driverName,
+      Value<int> odometer,
+      Value<double> liters,
+      Value<double> pricePerL,
+      Value<double> total,
+      Value<String> fuelType,
+      Value<String> paidBy,
+      Value<DateTime> capturedAtDevice,
+      Value<double> lat,
+      Value<double> lng,
+      Value<double> acc,
+      Value<bool> mock,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$LocalFuelLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalFuelLogsTable> {
+  $$LocalFuelLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driverId => $composableBuilder(
+    column: $table.driverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driverName => $composableBuilder(
+    column: $table.driverName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get odometer => $composableBuilder(
+    column: $table.odometer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get liters => $composableBuilder(
+    column: $table.liters,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pricePerL => $composableBuilder(
+    column: $table.pricePerL,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fuelType => $composableBuilder(
+    column: $table.fuelType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paidBy => $composableBuilder(
+    column: $table.paidBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get capturedAtDevice => $composableBuilder(
+    column: $table.capturedAtDevice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lat => $composableBuilder(
+    column: $table.lat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lng => $composableBuilder(
+    column: $table.lng,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get acc => $composableBuilder(
+    column: $table.acc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get mock => $composableBuilder(
+    column: $table.mock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalFuelLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalFuelLogsTable> {
+  $$LocalFuelLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driverId => $composableBuilder(
+    column: $table.driverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driverName => $composableBuilder(
+    column: $table.driverName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get odometer => $composableBuilder(
+    column: $table.odometer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get liters => $composableBuilder(
+    column: $table.liters,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pricePerL => $composableBuilder(
+    column: $table.pricePerL,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fuelType => $composableBuilder(
+    column: $table.fuelType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paidBy => $composableBuilder(
+    column: $table.paidBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get capturedAtDevice => $composableBuilder(
+    column: $table.capturedAtDevice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lat => $composableBuilder(
+    column: $table.lat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lng => $composableBuilder(
+    column: $table.lng,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get acc => $composableBuilder(
+    column: $table.acc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get mock => $composableBuilder(
+    column: $table.mock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalFuelLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalFuelLogsTable> {
+  $$LocalFuelLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get driverId =>
+      $composableBuilder(column: $table.driverId, builder: (column) => column);
+
+  GeneratedColumn<String> get driverName => $composableBuilder(
+    column: $table.driverName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get odometer =>
+      $composableBuilder(column: $table.odometer, builder: (column) => column);
+
+  GeneratedColumn<double> get liters =>
+      $composableBuilder(column: $table.liters, builder: (column) => column);
+
+  GeneratedColumn<double> get pricePerL =>
+      $composableBuilder(column: $table.pricePerL, builder: (column) => column);
+
+  GeneratedColumn<double> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get fuelType =>
+      $composableBuilder(column: $table.fuelType, builder: (column) => column);
+
+  GeneratedColumn<String> get paidBy =>
+      $composableBuilder(column: $table.paidBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get capturedAtDevice => $composableBuilder(
+    column: $table.capturedAtDevice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get lat =>
+      $composableBuilder(column: $table.lat, builder: (column) => column);
+
+  GeneratedColumn<double> get lng =>
+      $composableBuilder(column: $table.lng, builder: (column) => column);
+
+  GeneratedColumn<double> get acc =>
+      $composableBuilder(column: $table.acc, builder: (column) => column);
+
+  GeneratedColumn<bool> get mock =>
+      $composableBuilder(column: $table.mock, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$LocalFuelLogsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalFuelLogsTable,
+          LocalFuelLog,
+          $$LocalFuelLogsTableFilterComposer,
+          $$LocalFuelLogsTableOrderingComposer,
+          $$LocalFuelLogsTableAnnotationComposer,
+          $$LocalFuelLogsTableCreateCompanionBuilder,
+          $$LocalFuelLogsTableUpdateCompanionBuilder,
+          (
+            LocalFuelLog,
+            BaseReferences<_$AppDatabase, $LocalFuelLogsTable, LocalFuelLog>,
+          ),
+          LocalFuelLog,
+          PrefetchHooks Function()
+        > {
+  $$LocalFuelLogsTableTableManager(_$AppDatabase db, $LocalFuelLogsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalFuelLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalFuelLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalFuelLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> driverId = const Value.absent(),
+                Value<String> driverName = const Value.absent(),
+                Value<int> odometer = const Value.absent(),
+                Value<double> liters = const Value.absent(),
+                Value<double> pricePerL = const Value.absent(),
+                Value<double> total = const Value.absent(),
+                Value<String> fuelType = const Value.absent(),
+                Value<String> paidBy = const Value.absent(),
+                Value<DateTime> capturedAtDevice = const Value.absent(),
+                Value<double> lat = const Value.absent(),
+                Value<double> lng = const Value.absent(),
+                Value<double> acc = const Value.absent(),
+                Value<bool> mock = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFuelLogsCompanion(
+                id: id,
+                driverId: driverId,
+                driverName: driverName,
+                odometer: odometer,
+                liters: liters,
+                pricePerL: pricePerL,
+                total: total,
+                fuelType: fuelType,
+                paidBy: paidBy,
+                capturedAtDevice: capturedAtDevice,
+                lat: lat,
+                lng: lng,
+                acc: acc,
+                mock: mock,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String driverId,
+                required String driverName,
+                required int odometer,
+                required double liters,
+                required double pricePerL,
+                required double total,
+                required String fuelType,
+                required String paidBy,
+                required DateTime capturedAtDevice,
+                required double lat,
+                required double lng,
+                required double acc,
+                required bool mock,
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFuelLogsCompanion.insert(
+                id: id,
+                driverId: driverId,
+                driverName: driverName,
+                odometer: odometer,
+                liters: liters,
+                pricePerL: pricePerL,
+                total: total,
+                fuelType: fuelType,
+                paidBy: paidBy,
+                capturedAtDevice: capturedAtDevice,
+                lat: lat,
+                lng: lng,
+                acc: acc,
+                mock: mock,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LocalFuelLogsTable, LocalFuelLog>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $LocalFuelLogsTable,
+                    LocalFuelLog
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalFuelLogsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalFuelLogsTable,
+      LocalFuelLog,
+      $$LocalFuelLogsTableFilterComposer,
+      $$LocalFuelLogsTableOrderingComposer,
+      $$LocalFuelLogsTableAnnotationComposer,
+      $$LocalFuelLogsTableCreateCompanionBuilder,
+      $$LocalFuelLogsTableUpdateCompanionBuilder,
+      (
+        LocalFuelLog,
+        BaseReferences<_$AppDatabase, $LocalFuelLogsTable, LocalFuelLog>,
+      ),
+      LocalFuelLog,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2474,4 +3801,6 @@ class $AppDatabaseManager {
       $$LocalTripsTableTableManager(_db, _db.localTrips);
   $$LocalEvidenceTableTableManager get localEvidence =>
       $$LocalEvidenceTableTableManager(_db, _db.localEvidence);
+  $$LocalFuelLogsTableTableManager get localFuelLogs =>
+      $$LocalFuelLogsTableTableManager(_db, _db.localFuelLogs);
 }

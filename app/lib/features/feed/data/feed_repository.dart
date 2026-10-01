@@ -20,8 +20,14 @@ final feedRepositoryProvider = Provider<FeedRepository>(
   (ref) => FeedRepository(ref.watch(firestoreProvider), ref.watch(appDatabaseProvider)),
 );
 
-final _firstTripsProvider = StreamProvider<FeedDocs>((ref) => ref.watch(feedRepositoryProvider).firstPage('trips'));
-final _firstFillsProvider = StreamProvider<FeedDocs>((ref) => ref.watch(feedRepositoryProvider).firstPage('fuelLogs'));
+// Tied to the signed-in user: sign-out cancels the listeners (instead of leaving
+// them dead after 'permission denied'), and each sign-in starts them fresh.
+final _firstTripsProvider = StreamProvider<FeedDocs>((ref) => ref.watch(currentUidProvider) == null
+    ? Stream.value(const [])
+    : ref.watch(feedRepositoryProvider).firstPage('trips'));
+final _firstFillsProvider = StreamProvider<FeedDocs>((ref) => ref.watch(currentUidProvider) == null
+    ? Stream.value(const [])
+    : ref.watch(feedRepositoryProvider).firstPage('fuelLogs'));
 
 /// Pages loaded with "Load older".
 class OlderPages {
@@ -36,7 +42,10 @@ class OlderPages {
 
 class OlderPagesNotifier extends Notifier<OlderPages> {
   @override
-  OlderPages build() => const OlderPages();
+  OlderPages build() {
+    ref.watch(currentUidProvider); // reset on sign-out / another sign-in
+    return const OlderPages();
+  }
 
   Future<void> loadMore() async {
     if (state.loading || state.done) return;

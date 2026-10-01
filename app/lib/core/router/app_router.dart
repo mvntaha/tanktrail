@@ -2,7 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../features/admin/domain/admin_log.dart';
 import '../../features/admin/presentation/admin_home_screen.dart';
+import '../../features/admin/presentation/admin_log_screen.dart';
+import '../../features/admin/presentation/places_screen.dart';
+import '../../features/admin/presentation/vehicle_screen.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/domain/session.dart';
 import '../../features/auth/presentation/location_notice_screen.dart';
@@ -25,6 +29,10 @@ abstract final class Routes {
   static String tripEnd(String tripId) => '/driver/trip/$tripId/end';
   static const fuelNew = '/driver/fuel/new';
   static const editLog = '/driver/edit';
+  static String adminLog(String id) => '/admin/log/$id';
+  static const adminVehicle = '/admin/vehicle';
+  static const adminPlaces = '/admin/places';
+  static const adminPlaceNew = '/admin/places/edit';
 }
 
 /// The one route each session state is allowed to be on (plus sub-routes,
@@ -79,7 +87,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: Routes.admin, builder: (_, _) => const AdminHomeScreen()),
+      GoRoute(
+        path: Routes.admin,
+        builder: (_, _) => const AdminHomeScreen(),
+        routes: [
+          GoRoute(path: 'log/:id', builder: (_, state) => AdminLogScreen(id: state.pathParameters['id']!)),
+          GoRoute(path: 'vehicle', builder: (_, _) => const VehicleScreen()),
+          GoRoute(
+            path: 'places',
+            builder: (_, _) => const PlacesScreen(),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                redirect: (_, state) => state.extra is Place ? null : Routes.adminPlaces,
+                builder: (_, state) => PlaceEditScreen(place: state.extra! as Place),
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   );
 });

@@ -30,6 +30,13 @@ final sessionProvider = StreamProvider<Session>((ref) {
   return ref.watch(authRepositoryProvider).watchSession(user.uid);
 });
 
+/// The signed-in user's ID, or null. Providers that read Firestore watch this,
+/// so signing out stops their listeners and the next sign-in starts fresh.
+final currentUidProvider = Provider<String?>((ref) {
+  final s = ref.watch(sessionProvider).value;
+  return s is SignedIn ? s.user.uid : null;
+});
+
 class AuthRepository {
   AuthRepository(this._auth, this._db);
 

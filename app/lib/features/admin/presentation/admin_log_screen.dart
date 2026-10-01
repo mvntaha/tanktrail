@@ -12,6 +12,7 @@ import '../../../core/utils/format.dart';
 import '../../feed/presentation/media_viewer_screen.dart';
 import '../../fuel/domain/fuel_log.dart';
 import '../data/admin_repository.dart';
+import '../data/geocode_service.dart';
 import '../domain/admin_log.dart';
 import '../domain/flags.dart';
 import 'admin_map.dart';
@@ -121,7 +122,9 @@ class _AdminLogScreenState extends ConsumerState<AdminLogScreen> {
                       label: const Text('Name this place'),
                       onPressed: () {
                         final at = l.loc ?? l.startLoc ?? l.endLoc!;
-                        context.push(Routes.adminPlaceNew, extra: Place(id: '', name: '', lat: at.lat, lng: at.lng));
+                        // Start from the looked-up address; the admin can shorten it.
+                        final suggested = ref.read(addressProvider((lat: at.lat, lng: at.lng))).value ?? '';
+                        context.push(Routes.adminPlaceNew, extra: Place(id: '', name: suggested, lat: at.lat, lng: at.lng));
                       },
                     ),
                   ),
@@ -270,29 +273,30 @@ class _Values extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final l = log;
-    String where(GeoPoint2? g) {
-      if (g == null) return '–';
-      final name = placeName(g, places);
-      return '${name ?? 'Unnamed place'} (±${g.acc.round()} m${g.mock ? ', MOCK' : ''})';
-    }
+    Widget text(String v) => Text(v, style: TextStyle(color: t.foreground, fontSize: 15));
 
-    final rows = <(String, String)>[
+    final rows = <(String, Widget)>[
       if (l.isTrip) ...[
-        ('Start', '${formatKm(l.startOdo ?? 0)} · ${where(l.startLoc)}'),
-        if (!l.tripOpen) ('End', '${formatKm(l.endOdo ?? 0)} · ${where(l.endLoc)}'),
-        if (!l.tripOpen) ('Distance', formatKm((l.endOdo ?? 0) - (l.startOdo ?? 0))),
+        ('Start', text(formatKm(l.startOdo ?? 0))),
+        ('From', _Where(at: l.startLoc, places: places)),
+        if (!l.tripOpen) ...[
+          ('End', text(formatKm(l.endOdo ?? 0))),
+          ('To', _Where(at: l.endLoc, places: places)),
+          ('Distance', text(formatKm((l.endOdo ?? 0) - (l.startOdo ?? 0)))),
+        ],
       ] else ...[
-        ('Odometer', formatKm(l.odometer ?? 0)),
-        ('Litres', '${(l.liters ?? 0).toStringAsFixed(2)} L'),
-        ('Price', 'Rs ${(l.pricePerL ?? 0).toStringAsFixed(2)} / L'),
-        ('Total', 'Rs ${(l.total ?? 0).toStringAsFixed(2)}'),
-        ('Fuel', fuelTypeLabels[l.fuelType] ?? '${l.fuelType}'),
-        ('Paid by', paidByLabels[l.paidBy] ?? '${l.paidBy}'),
-        ('Status', '${l.status}'),
-        ('Where', where(l.loc)),
+        ('Odometer', text(formatKm(l.odometer ?? 0))),
+        ('Litres', text('${(l.liters ?? 0).toStringAsFixed(2)} L')),
+        ('Price', text('Rs ${(l.pricePerL ?? 0).toStringAsFixed(2)} / L')),
+        ('Total', text('Rs ${(l.total ?? 0).toStringAsFixed(2)}')),
+        ('Fuel', text(fuelTypeLabels[l.fuelType] ?? '${l.fuelType}')),
+        ('Paid by', text(paidByLabels[l.paidBy] ?? '${l.paidBy}')),
+        ('Status', text('${l.status}')),
+        ('Where', _Where(at: l.loc, places: places)),
       ],
     ];
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final (k, v) in rows)
           Padding(
@@ -301,10 +305,48 @@ class _Values extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(width: 90, child: Text(k, style: TextStyle(color: t.mutedForeground, fontSize: 14))),
-                Expanded(child: Text(v, style: TextStyle(color: t.foreground, fontSize: 15))),
+                Expanded(child: v),
               ],
             ),
           ),
+        // Required attribution for the OSM address lookup (Nominatim).
+        Text('Addresses © OpenStreetMap contributors', style: TextStyle(fontSize: 11, color: t.mutedForeground)),
+      ],
+    );
+  }
+}
+
+/// A saved place name if the point is inside one; otherwise an approximate
+/// street address from OpenStreetMap (looked up once, then cached).
+class _Where extends ConsumerWidget {
+  const _Where({required this.at, required this.places});
+  final GeoPoint2? at;
+  final List<Place> places;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final g = at;
+    if (g == null) return Text('–', style: TextStyle(color: t.foreground, fontSize: 15));
+    final detail = '±${g.acc.round()} m${g.mock ? ' · MOCK LOCATION' : ''}';
+    final saved = placeName(g, places);
+
+    final String name;
+    if (saved != null) {
+      name = saved;
+    } else {
+      final address = ref.watch(addressProvider((lat: g.lat, lng: g.lng)));
+      name = switch (address) {
+        AsyncData(value: final a?) => '≈ $a',
+        AsyncLoading() => 'Looking up address...',
+        _ => 'Unnamed place (address needs internet)',
+      };
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(name, style: TextStyle(color: t.foreground, fontSize: 15, fontWeight: saved != null ? FontWeight.w600 : null)),
+        Text(detail, style: TextStyle(color: g.mock ? t.destructive : t.mutedForeground, fontSize: 13)),
       ],
     );
   }

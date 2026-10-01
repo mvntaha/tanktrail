@@ -32,6 +32,8 @@ class AdminData {
 /// One-off reads (no live listeners) to stay well inside the free quota.
 /// Pull to refresh re-reads; the offline cache answers when there's no internet.
 final adminDataProvider = FutureProvider<AdminData>((ref) async {
+  // Per sign-in: nothing from a previous login is kept or shown.
+  if (ref.watch(currentUidProvider) == null) throw StateError('Signed out');
   final days = ref.watch(adminWindowDaysProvider);
   final repo = ref.watch(adminRepositoryProvider);
   final since = DateTime.now().subtract(Duration(days: days));
@@ -46,9 +48,10 @@ final adminDataProvider = FutureProvider<AdminData>((ref) async {
 });
 
 /// A log's edit history (previous values), newest last. Admin only.
-final editHistoryProvider = FutureProvider.family<List<Map<String, dynamic>>, ({bool isTrip, String id})>(
-  (ref, key) => ref.watch(adminRepositoryProvider).edits(key.isTrip, key.id),
-);
+final editHistoryProvider = FutureProvider.family<List<Map<String, dynamic>>, ({bool isTrip, String id})>((ref, key) {
+  ref.watch(currentUidProvider);
+  return ref.watch(adminRepositoryProvider).edits(key.isTrip, key.id);
+});
 
 class AdminRepository {
   AdminRepository(this._fs);

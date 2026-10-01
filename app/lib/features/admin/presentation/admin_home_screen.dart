@@ -81,23 +81,7 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
           text: 'Set up the vehicle (name, plate, and optionally tank size, km/L, petrol price) to turn on more checks.',
           onTap: () => context.push(Routes.adminVehicle),
         ),
-      Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _Stat(label: 'Distance', value: s.km == null ? '–' : formatKm(s.km!)),
-          _Stat(label: 'Fuel', value: '${s.liters.toStringAsFixed(1)} L'),
-          _Stat(label: 'Cost', value: 'Rs ${formatThousands(s.cost.round())}'),
-          _Stat(label: 'Efficiency', value: s.kmPerL == null ? '–' : '${s.kmPerL!.toStringAsFixed(1)} km/L'),
-          _Stat(label: 'Cost per km', value: s.costPerKm == null ? '–' : 'Rs ${s.costPerKm!.toStringAsFixed(1)}'),
-        ],
-      ),
-      if (s.pendingFills > 0)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text('Includes ${s.pendingFills} fill(s) still pending review. Rejected fills are excluded.',
-              style: TextStyle(fontSize: 13, color: t.mutedForeground)),
-        ),
+      _KpiPanel(stats: s, days: ref.read(adminWindowDaysProvider)),
       const SizedBox(height: 22),
       Row(
         children: [
@@ -158,30 +142,99 @@ class _Banner extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label;
-  final String value;
+/// Window totals in one card: the two headline numbers, then three ratios.
+class _KpiPanel extends StatelessWidget {
+  const _KpiPanel({required this.stats, required this.days});
+  final WindowStats stats;
+  final int days;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final s = stats;
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
         color: t.card,
-        borderRadius: BorderRadius.circular(t.radiusSm),
+        borderRadius: BorderRadius.circular(t.radius),
         border: Border.all(color: t.border),
+        boxShadow: t.shadow,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: t.mutedForeground)),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: t.cardForeground)),
+          Row(
+            children: [
+              Text('Last $days days', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.mutedForeground)),
+              const Spacer(),
+              if (s.pendingFills > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(color: t.secondary, borderRadius: BorderRadius.circular(t.radiusSm)),
+                  child: Text('${s.pendingFills} pending incl.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: t.secondaryForeground)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _Kpi(label: 'Distance', value: s.km == null ? '–' : formatKm(s.km!), big: true)),
+                VerticalDivider(color: t.border, width: 24, thickness: 1),
+                Expanded(child: _Kpi(label: 'Spent', value: 'Rs ${formatThousands(s.cost.round())}', big: true)),
+              ],
+            ),
+          ),
+          Divider(color: t.border, height: 28),
+          Row(
+            children: [
+              Expanded(child: _Kpi(label: 'Fuel', value: '${s.liters.toStringAsFixed(1)} L')),
+              Expanded(child: _Kpi(label: 'Efficiency', value: s.kmPerL == null ? '–' : '${s.kmPerL!.toStringAsFixed(1)} km/L')),
+              Expanded(child: _Kpi(label: 'Per km', value: s.costPerKm == null ? '–' : 'Rs ${s.costPerKm!.toStringAsFixed(1)}')),
+            ],
+          ),
+          if (s.fills > 0 || s.pendingFills > 0) ...[
+            const SizedBox(height: 10),
+            Text('Rejected fills are left out; pending ones are counted.',
+                style: TextStyle(fontSize: 12, color: t.mutedForeground)),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _Kpi extends StatelessWidget {
+  const _Kpi({required this.label, required this.value, this.big = false});
+  final String label;
+  final String value;
+  final bool big;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13, color: t.mutedForeground)),
+        const SizedBox(height: 2),
+        // Shrinks long values instead of wrapping, so columns stay aligned.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: big ? 26 : 17,
+              fontWeight: big ? FontWeight.w700 : FontWeight.w600,
+              color: t.cardForeground,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

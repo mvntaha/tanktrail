@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,6 +34,27 @@ final myOpenTripProvider = StreamProvider<Trip?>((ref) {
 /// Highest odometer reading recorded on this phone, used only for a soft hint.
 /// (Never stored: always derived, so late or out-of-order logs can't corrupt it.)
 final lastOdometerProvider = StreamProvider<int?>((ref) => ref.watch(tripRepositoryProvider).watchLastOdometer());
+
+/// Other drivers' open trips on the server (cached copy when offline), for a
+/// warning only: starting a trip is never blocked. Bounded to 10 docs.
+final othersOpenTripsProvider = StreamProvider<List<({String driverName, DateTime? startedAt})>>((ref) {
+  final uid = _myUid(ref);
+  if (uid == null) return Stream.value(const []);
+  return ref
+      .watch(firestoreProvider)
+      .collection('trips')
+      .where('status', isEqualTo: 'open')
+      .limit(10)
+      .snapshots()
+      .map((s) => [
+            for (final d in s.docs)
+              if (d.data()['driverId'] != uid)
+                (
+                  driverName: (d.data()['driverName'] as String?) ?? 'Another driver',
+                  startedAt: (d.data()['startedAt'] as Timestamp?)?.toDate(),
+                ),
+          ]);
+});
 
 /// A trip by ID, for the end-trip screen.
 final tripByIdProvider = StreamProvider.family<Trip?, String>(

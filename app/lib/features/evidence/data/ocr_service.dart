@@ -18,16 +18,22 @@ final ocrServiceProvider = Provider<OcrService>((ref) {
 class OcrService {
   final _recognizer = TextRecognizer();
 
+  /// Runs [read] and gives up after [limit] (returns null): a slow OCR must
+  /// never hold up saving a log.
+  Future<String?> readWithin(String photoPath, List<double> box, {Duration limit = const Duration(seconds: 8)}) =>
+      read(photoPath, box).timeout(limit, onTimeout: () => null);
+
   /// Reads the framed area of [photoPath]. [box] is the framing guide as
   /// fractions (left, top, right, bottom). Tries the plain crop and an
   /// enlarged high-contrast version (which did better in docs/ocr-test.md).
   /// Returns the raw text of both passes, or null if nothing was read.
+  /// Runs in the background after capture; never blocks the driver.
   Future<String?> read(String photoPath, List<double> box) async {
     try {
       final tmp = (await getTemporaryDirectory()).path;
       final stamp = DateTime.now().microsecondsSinceEpoch;
-      final cropPath = '$tmp/ocr_${stamp}_crop.png';
-      final enhPath = '$tmp/ocr_${stamp}_enh.png';
+      final cropPath = '$tmp/ocr_${stamp}_crop.jpg';
+      final enhPath = '$tmp/ocr_${stamp}_enh.jpg';
       // Image work off the UI thread so the screen doesn't stutter.
       await Isolate.run(() => _prepare(photoPath, box, cropPath, enhPath));
 
@@ -55,12 +61,12 @@ void _prepare(String src, List<double> box, String cropPath, String enhPath) {
   final r = ((box[2] + 0.1 * (box[2] - box[0])).clamp(0.0, 1.0) * image.width).round();
   final b = ((box[3] + 0.1 * (box[3] - box[1])).clamp(0.0, 1.0) * image.height).round();
   final crop = img.copyCrop(image, x: l, y: t, width: r - l, height: b - t);
-  File(cropPath).writeAsBytesSync(img.encodePng(crop));
+  File(cropPath).writeAsBytesSync(img.encodeJpg(crop, quality: 92));
 
   // Enlarge small crops to ~1600px wide, then grayscale + contrast stretch.
   final scale = (1600 / crop.width).clamp(1.0, 4.0);
   var enh = img.copyResize(crop, width: (crop.width * scale).round(), interpolation: img.Interpolation.cubic);
   enh = img.normalize(img.grayscale(enh), min: 0, max: 255);
   enh = img.adjustColor(enh, contrast: 1.6);
-  File(enhPath).writeAsBytesSync(img.encodePng(enh));
+  File(enhPath).writeAsBytesSync(img.encodeJpg(enh, quality: 92));
 }

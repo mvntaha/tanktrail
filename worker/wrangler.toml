@@ -1,0 +1,15 @@
+# Cloudflare Worker (free plan) that signs Cloudinary uploads for TankTrail.
+# Secrets are NOT in this file. Set them once with:
+#   npx wrangler secret put CLOUDINARY_API_KEY
+#   npx wrangler secret put CLOUDINARY_API_SECRET
+name = "tanktrail-signer-dev"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Tokens must be issued for this Firebase project (dev for now; prod in M9).
+FIREBASE_PROJECT_ID = "tanktrail-dev-e514e"
+# Cloud name is not secret (it is part of every image URL).
+CLOUDINARY_CLOUD_NAME = "dgm2hjnfx"
+# All files go under this Cloudinary folder.
+FOLDER = "tanktrail-dev"

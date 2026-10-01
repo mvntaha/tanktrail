@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/sync/sync_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/ids.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/session.dart';
+import '../../evidence/data/ocr_service.dart';
 import '../../evidence/domain/captured_media.dart';
 import '../../evidence/presentation/camera_capture_screen.dart';
 import '../../evidence/presentation/evidence_slot.dart';
@@ -34,6 +36,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   late final String _tripId = widget.endTripId ?? newId();
   final _odo = TextEditingController();
   CapturedMedia? _photo;
+  // OCR of the photo, running in the background while the driver types.
+  Future<String?>? _ocr;
   bool _saving = false;
 
   @override
@@ -60,6 +64,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     if (media == null || !mounted) return;
     final old = _photo;
     setState(() => _photo = media);
+    _ocr = ref.read(ocrServiceProvider).readWithin(media.filePath, CameraCaptureScreen.odometerGuide);
     // A replaced photo was never saved to a log, so its file can go.
     if (old != null) File(old.filePath).delete().ignore();
   }
@@ -81,9 +86,9 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
   Future<void> _save(Trip? trip) async {
     final reading = _reading;
-    final photo = _photo;
+    final taken = _photo;
     final session = ref.read(sessionProvider).value;
-    if (reading == null || photo == null || session is! SignedIn) return;
+    if (reading == null || taken == null || session is! SignedIn) return;
 
     // Soft checks only: a typo is fixable later, a blocked log loses evidence.
     if (trip == null) {
@@ -107,6 +112,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
     setState(() => _saving = true);
     try {
+      final photo = taken.withOcrText(await _ocr);
       final repo = ref.read(tripRepositoryProvider);
       if (trip == null) {
         await repo.startTrip(tripId: _tripId, driver: session.user, startOdo: reading, photo: photo);
@@ -114,6 +120,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         await repo.endTrip(tripId: trip.id, endOdo: reading, photo: photo);
       }
       HapticFeedback.mediumImpact();
+      // Upload right away if there is internet; otherwise it waits.
+      ref.read(syncServiceProvider).kick().ignore();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(trip == null ? 'Trip started' : 'Trip ended')),
@@ -202,7 +210,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Saved on this phone. Uploading comes in a later update.',
+              'Saved on this phone first, then uploaded when there is internet.',
               textAlign: TextAlign.center,
               style: TextStyle(color: t.mutedForeground, fontSize: 13),
             ),

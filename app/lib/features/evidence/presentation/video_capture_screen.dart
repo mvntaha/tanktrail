@@ -33,11 +33,13 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen> with Wi
   Timer? _timer;
   DateTime? _startedAt;
   Future<GeoFix?>? _fixFuture;
+  late final GpsWarmup _gps = GpsWarmup(ref.read(locationServiceProvider));
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _gps.start(); // fix ready when recording starts
     _init();
   }
 
@@ -45,6 +47,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen> with Wi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _gps.stop();
     _controller?.dispose();
     super.dispose();
   }
@@ -55,10 +58,12 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen> with Wi
     if (state == AppLifecycleState.inactive && c != null) {
       // Leaving the app mid-recording discards it; the driver records again.
       _timer?.cancel();
+      _gps.stop();
       _controller = null;
       c.dispose();
       if (mounted) setState(() => _recording = false);
     } else if (state == AppLifecycleState.resumed && _controller == null) {
+      _gps.start();
       _init();
     }
   }
@@ -118,7 +123,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen> with Wi
     await c.startVideoRecording();
     _startedAt = DateTime.now();
     // GPS at the moment recording starts; failure becomes null (see photo screen).
-    _fixFuture = ref.read(locationServiceProvider).currentFix().then<GeoFix?>((f) => f, onError: (_) => null);
+    _fixFuture = _gps.fixFor(_startedAt!);
     setState(() {
       _recording = true;
       _seconds = 0;
@@ -166,7 +171,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen> with Wi
           setState(() => _busy = false);
           return;
         }
-        fix = await ref.read(locationServiceProvider).currentFix().then<GeoFix?>((f) => f, onError: (_) => null);
+        fix = await _gps.fixFor(DateTime.now());
       }
 
       if (!mounted) return;
